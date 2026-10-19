@@ -40,6 +40,15 @@ Working rules:
 
 func ptr[T any](v T) *T { return &v }
 
+// draftOut builds a draft result, without the text when bodies are hidden from agents.
+func (h *handlers) draftOut(d model.Draft, status string) DraftOut {
+	d.Attachments = nil
+	if !h.app.SettingBool("agent.expose_bodies") {
+		d.Body, d.HTMLBody = "", ""
+	}
+	return DraftOut{Draft: d, Status: status}
+}
+
 // New builds a server for one client. actor is recorded in the audit log.
 func New(app *core.App, actor, scope string) *mcp.Server {
 	s := mcp.NewServer(&mcp.Implementation{Name: "openmail", Title: "OpenMail", Version: core.Version}, &mcp.ServerOptions{Instructions: instructions})
@@ -518,13 +527,13 @@ func (h *handlers) register(s *mcp.Server) {
 					return nil, DraftOut{}, err
 				}
 				d, err := h.app.SaveDraft(h.actor, model.Draft{ID: in.DraftID, AccountID: strings.ToLower(in.Account), To: to, Cc: cc, Bcc: bcc, Subject: in.Subject, Body: in.Body})
-				return nil, DraftOut{Draft: d, Status: "saved; not sent"}, err
+				return nil, h.draftOut(d, "saved; not sent"), err
 			})
 
 		mcp.AddTool(s, &mcp.Tool{Name: "reply_to_message", Description: "Create a reply draft with correct recipients, subject, threading headers, signature and quoted original. Nothing is sent.", Annotations: wr},
 			func(ctx context.Context, _ *mcp.CallToolRequest, in ReplyIn) (*mcp.CallToolResult, DraftOut, error) {
 				d, err := h.app.Reply(h.actor, in.MessageID, in.ReplyAll, in.Body)
-				return nil, DraftOut{Draft: d, Status: "saved; not sent"}, err
+				return nil, h.draftOut(d, "saved; not sent"), err
 			})
 
 		mcp.AddTool(s, &mcp.Tool{Name: "forward_message", Description: "Create a forward draft including attachments. Nothing is sent.", Annotations: wr},
@@ -539,7 +548,7 @@ func (h *handlers) register(s *mcp.Server) {
 				}
 				d.To = to
 				d, err = h.app.SaveDraft(h.actor, d)
-				return nil, DraftOut{Draft: d, Status: "saved; not sent"}, err
+				return nil, h.draftOut(d, "saved; not sent"), err
 			})
 
 		mcp.AddTool(s, &mcp.Tool{Name: "delete_draft", Description: "Delete a draft.", Annotations: &mcp.ToolAnnotations{DestructiveHint: ptr(true)}},
@@ -583,7 +592,7 @@ func (h *handlers) register(s *mcp.Server) {
 				case core.StateQueued:
 					status = fmt.Sprintf("queued; sends in %ds unless the user cancels", h.app.SettingInt("send.undo_seconds"))
 				}
-				return nil, DraftOut{Draft: d, Status: status}, err
+				return nil, h.draftOut(d, status), err
 			})
 		mcp.AddTool(s, &mcp.Tool{Name: "unsubscribe", Description: "Unsubscribe from a mailing list using its List-Unsubscribe header (one-click or mailto). Returns the link instead when it needs a person.", Annotations: &mcp.ToolAnnotations{DestructiveHint: ptr(false), OpenWorldHint: ptr(true)}},
 			func(ctx context.Context, _ *mcp.CallToolRequest, in UnsubIn) (*mcp.CallToolResult, core.UnsubscribeResult, error) {

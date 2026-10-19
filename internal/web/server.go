@@ -343,6 +343,15 @@ func (s *Server) bodiesHidden(p principal) bool {
 	return core.IsAgent(p.actor) && !s.app.SettingBool("agent.expose_bodies")
 }
 
+// writeDraft sends a draft back to the caller, without its text when bodies are hidden from agents.
+func (s *Server) writeDraft(w http.ResponseWriter, p principal, d model.Draft) {
+	d.Attachments = nil
+	if s.bodiesHidden(p) {
+		d.Body, d.HTMLBody = "", ""
+	}
+	writeJSON(w, d)
+}
+
 func redact(m *model.Message) { m.Text, m.HTML, m.Snippet = "", "", "" }
 
 // ---- reading ----
@@ -560,6 +569,9 @@ func (s *Server) editDraft(w http.ResponseWriter, r *http.Request, p principal) 
 		dto.Files = append(dto.Files, fileDTO{Filename: a.Filename, ContentType: a.ContentType, Size: a.Size})
 	}
 	dto.Attachments = nil
+	if s.bodiesHidden(p) {
+		dto.Body, dto.HTMLBody = "", ""
+	}
 	writeJSON(w, dto)
 	return nil
 }
@@ -711,8 +723,7 @@ func (s *Server) saveDraft(w http.ResponseWriter, r *http.Request, p principal) 
 	if err != nil {
 		return err
 	}
-	out.Attachments = nil
-	writeJSON(w, out)
+	s.writeDraft(w, p, out)
 	return nil
 }
 
@@ -737,8 +748,7 @@ func (s *Server) sendDraft(w http.ResponseWriter, r *http.Request, p principal) 
 	if err != nil {
 		return err
 	}
-	d.Attachments = nil
-	writeJSON(w, d)
+	s.writeDraft(w, p, d)
 	return nil
 }
 
@@ -751,8 +761,7 @@ func (s *Server) approveDraft(w http.ResponseWriter, r *http.Request, p principa
 	if err != nil {
 		return err
 	}
-	d.Attachments = nil
-	writeJSON(w, d)
+	s.writeDraft(w, p, d)
 	return nil
 }
 
@@ -765,8 +774,7 @@ func (s *Server) cancelDraft(w http.ResponseWriter, r *http.Request, p principal
 	if err != nil {
 		return err
 	}
-	d.Attachments = nil
-	writeJSON(w, d)
+	s.writeDraft(w, p, d)
 	return nil
 }
 
@@ -783,8 +791,7 @@ func (s *Server) reply(w http.ResponseWriter, r *http.Request, p principal) erro
 	if err != nil {
 		return err
 	}
-	d.Attachments = nil
-	writeJSON(w, d)
+	s.writeDraft(w, p, d)
 	return nil
 }
 
@@ -805,6 +812,9 @@ func (s *Server) forward(w http.ResponseWriter, r *http.Request, p principal) er
 		dto.Files = append(dto.Files, fileDTO{Filename: a.Filename, ContentType: a.ContentType, Size: a.Size})
 	}
 	dto.Attachments = nil
+	if s.bodiesHidden(p) {
+		dto.Body, dto.HTMLBody = "", ""
+	}
 	writeJSON(w, dto)
 	return nil
 }

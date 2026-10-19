@@ -162,8 +162,12 @@ func (a *App) session(ctx context.Context, acct model.Account) error {
 			if wait > 9*time.Minute {
 				wait = 9 * time.Minute
 			}
-			if err := a.idleInbox(ctx, c, wait, a.kickChan(acct.ID)); err != nil {
+			kicked, err := a.idleInbox(ctx, c, wait, a.kickChan(acct.ID))
+			if err != nil {
 				return err
+			}
+			if kicked {
+				lastFull = time.Time{} // an explicit refresh checks every folder, not just the inbox
 			}
 		} else {
 			if wait > 60*time.Second {
@@ -179,13 +183,13 @@ func (a *App) session(ctx context.Context, acct model.Account) error {
 	return nil
 }
 
-func (a *App) idleInbox(ctx context.Context, c *imapx.Conn, d time.Duration, kick <-chan struct{}) error {
+func (a *App) idleInbox(ctx context.Context, c *imapx.Conn, d time.Duration, kick <-chan struct{}) (kicked bool, err error) {
 	if _, err := c.Select("INBOX", nil).Wait(); err != nil {
-		return fmt.Errorf("select INBOX: %w", err)
+		return false, fmt.Errorf("select INBOX: %w", err)
 	}
 	idle, err := c.Idle()
 	if err != nil {
-		return fmt.Errorf("start IDLE: %w", err)
+		return false, fmt.Errorf("start IDLE: %w", err)
 	}
 	// drain stale signals from the sync we just did
 	select {
@@ -197,12 +201,13 @@ func (a *App) idleInbox(ctx context.Context, c *imapx.Conn, d time.Duration, kic
 	case <-time.After(d):
 	case <-c.Changes:
 	case <-kick:
+		kicked = true
 	case <-c.Closed():
 	}
 	if err := idle.Close(); err != nil {
-		return fmt.Errorf("stop IDLE: %w", err)
+		return kicked, fmt.Errorf("stop IDLE: %w", err)
 	}
-	return idle.Wait()
+	return kicked, idle.Wait()
 }
 
 func (a *App) kickChan(id string) <-chan struct{} {

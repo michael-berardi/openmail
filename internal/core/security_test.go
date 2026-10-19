@@ -2,6 +2,8 @@ package core
 
 import (
 	"context"
+	"encoding/json"
+	"net"
 	"strings"
 	"testing"
 
@@ -158,5 +160,73 @@ func TestDraftCannotBeRecalledOnceSending(t *testing.T) {
 	}
 	if got, _ := app.Store.GetDraft(d.ID); got.State != StateFailed || !strings.Contains(got.Error, "check Sent") {
 		t.Fatalf("%+v", got)
+	}
+}
+
+func TestAgentCannotEmptyTrashByTrashingTwice(t *testing.T) {
+	app := newTestApp(t)
+	trash := model.Mailbox{AccountID: "me@x.com", Name: "Trash", Role: "trash"}
+	_ = app.Store.UpsertMailbox(&trash)
+	m := model.Message{AccountID: "me@x.com", MailboxID: trash.ID, UID: 1, MessageID: "t@x", ThreadID: "t", Subject: "x"}
+	if _, err := app.Store.SaveMessage(&m, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Act(context.Background(), "mcp:x", []int64{m.ID}, ActTrash, ""); err == nil {
+		t.Fatal("trash from Trash is a permanent delete and must be refused for agents")
+	}
+	if _, err := app.Store.GetMessage(m.ID); err != nil {
+		t.Fatalf("message was deleted: %v", err)
+	}
+}
+
+func TestQueuedAgentSendsCountTowardTheHourlyLimit(t *testing.T) {
+	app := newTestApp(t)
+	if err := app.SetSetting("user", "agent.send_policy", "allow"); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.SetSetting("user", "agent.max_sends_hour", "2"); err != nil {
+		t.Fatal(err)
+	}
+	var last error
+	for i := 0; i < 4; i++ {
+		d, err := app.SaveDraft("mcp:x", model.Draft{AccountID: "me@x.com", To: []model.Address{{Addr: "a@b.com"}}, Subject: "s", Body: "b"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, last = app.SendDraft("mcp:x", d.ID)
+		if i < 2 && last != nil {
+			t.Fatalf("send %d should pass: %v", i, last)
+		}
+	}
+	if last == nil || !strings.Contains(last.Error(), "limit") {
+		t.Fatalf("drafts queued inside the undo window must count: %v", last)
+	}
+}
+
+func TestPublicIPRanges(t *testing.T) {
+	for ip, want := range map[string]bool{"8.8.8.8": true, "93.184.216.34": true, "127.0.0.1": false, "10.1.2.3": false, "192.168.1.1": false, "169.254.169.254": false,
+		"100.100.1.1": false, "198.18.0.5": false, "0.0.0.0": false, "::1": false, "fe80::1": false, "fd00::1": false, "64:ff9b::7f00:1": false, "2606:4700::1": true} {
+		if got := publicIP(net.ParseIP(ip)); got != want {
+			t.Errorf("%s: got %v want %v", ip, got, want)
+		}
+	}
+}
+
+func TestOverviewListsAreNeverNull(t *testing.T) {
+	app, err := OpenAt(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Close()
+	ov, _ := app.Overview()
+	b, _ := json.Marshal(ov)
+	if strings.Contains(string(b), `"accounts":null`) {
+		t.Fatalf("accounts must be []: %s", b)
+	}
+	_ = app.Store.PutAccount(model.Account{Email: "n@x.com", Enabled: true})
+	ov, _ = app.Overview()
+	b, _ = json.Marshal(ov)
+	if strings.Contains(string(b), `"mailboxes":null`) {
+		t.Fatalf("mailboxes must be []: %s", b)
 	}
 }

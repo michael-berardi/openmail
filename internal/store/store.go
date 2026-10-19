@@ -1019,8 +1019,10 @@ func (s *Store) SaveDraft(d *model.Draft) error {
 		}
 		d.ID, _ = res.LastInsertId()
 	} else {
-		if _, err := s.db.Exec(`UPDATE drafts SET account_id=?,json=?,updated=?,state=?,error=?,send_at=?,author=?,approved=?,server_uid=?,server_box=?,draft_key=?,queued_by=? WHERE id=?`,
-			d.AccountID, jsonStr(body), d.Updated, d.State, d.Error, d.SendAt, d.Author, b2i(d.Approved), d.ServerUID, d.ServerBox, d.DraftKey, d.QueuedBy, d.ID); err != nil {
+		// Content only. Workflow columns (state, send_at, approved, queued_by, error) change solely
+		// through TransitionDraft/ClaimDraft/FailDraft so an edit can never overwrite a send in progress.
+		if _, err := s.db.Exec(`UPDATE drafts SET account_id=?,json=?,updated=?,author=?,server_uid=?,server_box=?,draft_key=? WHERE id=?`,
+			d.AccountID, jsonStr(body), d.Updated, d.Author, d.ServerUID, d.ServerBox, d.DraftKey, d.ID); err != nil {
 			return err
 		}
 	}
@@ -1366,4 +1368,21 @@ func (s *Store) HasPlaceholderUID(mailboxID int64) bool {
 	var n int
 	_ = s.db.QueryRow(`SELECT 1 FROM messages WHERE mailbox_id=? AND uid>=2147483648 LIMIT 1`, mailboxID).Scan(&n)
 	return n == 1
+}
+
+// FailDraft records a failed send for a draft that is in "sending".
+func (s *Store) FailDraft(id int64, msg string) error {
+	_, err := s.db.Exec(`UPDATE drafts SET state='failed', error=? WHERE id=? AND state='sending'`, msg, id)
+	return err
+}
+
+// CountQueuedBy counts drafts in the outbox that an agent (by actor prefix) put there.
+func (s *Store) CountQueuedBy(prefixes ...string) int {
+	total := 0
+	for _, p := range prefixes {
+		var n int
+		_ = s.db.QueryRow(`SELECT COUNT(*) FROM drafts WHERE state IN ('queued','sending') AND queued_by LIKE ?`, p+"%").Scan(&n)
+		total += n
+	}
+	return total
 }

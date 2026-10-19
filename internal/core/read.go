@@ -168,7 +168,7 @@ type AccountView struct {
 }
 
 func (a *App) Overview() (Overview, error) {
-	var ov Overview
+	ov := Overview{Accounts: []AccountView{}}
 	accts, err := a.Store.ListAccounts()
 	if err != nil {
 		return ov, err

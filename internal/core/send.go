@@ -180,7 +180,7 @@ func (a *App) buildResponse(actor string, msgID int64, replyAll bool, body strin
 		if hideBody {
 			d.Body = strings.TrimSpace(body) + "\n" + sig
 		}
-		if raw, rerr := a.Store.RawMessage(m.ID); rerr == nil {
+		if raw, rerr := a.Store.RawMessage(m.ID); rerr == nil && !hideBody {
 			for _, at := range m.Attachments {
 				if at.Inline && at.Filename == "" {
 					continue
@@ -306,7 +306,8 @@ func (a *App) queue(d model.Draft, by string) (model.Draft, error) {
 
 func (a *App) checkAgentLimits(actor string, d model.Draft) error {
 	if max := a.SettingInt("agent.max_sends_hour"); max > 0 {
-		if n := a.Store.CountAudit("draft.sent", "mcp:", now().Add(-time.Hour).Unix()) + a.Store.CountAudit("draft.sent", "agent:", now().Add(-time.Hour).Unix()); n >= max {
+		// finished sends in the last hour plus everything an agent has already queued (undo window included)
+		if n := a.Store.CountAudit("draft.sent", "mcp:", now().Add(-time.Hour).Unix()) + a.Store.CountAudit("draft.sent", "agent:", now().Add(-time.Hour).Unix()) + a.Store.CountQueuedBy("mcp:", "agent:"); n >= max {
 			return fmt.Errorf("agent send limit reached (%d per hour, agent.max_sends_hour)", max)
 		}
 	}
@@ -406,8 +407,7 @@ func (a *App) sendOne(ctx context.Context, id int64) (err error) {
 	}
 	defer func() {
 		if err != nil {
-			d.State, d.Error = StateFailed, err.Error()
-			_ = a.Store.SaveDraft(&d)
+			_ = a.Store.FailDraft(id, err.Error())
 			a.Store.Audit(d.Author, "draft.failed", map[string]any{"id": id}, err)
 			a.emit(Event{Type: "outbox", Account: d.AccountID, Detail: "failed"})
 		}
@@ -589,6 +589,9 @@ func publicHTTPClient() *http.Client {
 			return err
 		}
 		ip := net.ParseIP(host)
+		if ip != nil && !publicIP(ip) {
+			return fmt.Errorf("refusing to connect to non-public address %s", host)
+		}
 		if ip == nil || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast() {
 			return fmt.Errorf("refusing to connect to non-public address %s", host)
 		}
@@ -601,4 +604,17 @@ func publicHTTPClient() *http.Client {
 			}
 			return nil
 		}}
+}
+
+// publicIP is false for loopback, private, link-local, carrier-grade NAT, benchmarking, NAT64 and similar ranges.
+func publicIP(ip net.IP) bool {
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() || ip.IsMulticast() {
+		return false
+	}
+	for _, cidr := range []string{"0.0.0.0/8", "100.64.0.0/10", "198.18.0.0/15", "192.0.0.0/24", "240.0.0.0/4", "64:ff9b::/96", "100::/64", "2001:db8::/32"} {
+		if _, n, err := net.ParseCIDR(cidr); err == nil && n.Contains(ip) {
+			return false
+		}
+	}
+	return true
 }

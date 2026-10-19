@@ -242,6 +242,9 @@ func (a *App) Act(ctx context.Context, actor string, ids []int64, kind, value st
 		if gerr != nil {
 			return gerr
 		}
+		if kind == ActTrash && IsAgent(actor) && m.MailboxRole == model.RoleTrash {
+			return errors.New("agents cannot empty the Trash: trashing a message already in Trash deletes it for good")
+		}
 		key := fmt.Sprintf("%s\x00%d", m.AccountID, m.MailboxID)
 		if _, ok := byGroup[key]; !ok {
 			order = append(order, key)

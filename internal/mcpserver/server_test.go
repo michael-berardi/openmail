@@ -151,3 +151,34 @@ func TestScopesAndSafety(t *testing.T) {
 		t.Error("mcp calls must be audited")
 	}
 }
+
+func TestHiddenBodiesAreHiddenInDraftResults(t *testing.T) {
+	app, err := core.OpenAt(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer app.Close()
+	if err := demo.Seed(app); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.SetSetting("user", "agent.expose_bodies", "false"); err != nil {
+		t.Fatal(err)
+	}
+	wr := connect(t, app, "write")
+	msgs, _ := app.Search("subject:invoice", core.ListOptions{})
+	d, isErr := call(t, wr, "reply_to_message", map[string]any{"message_id": msgs[0].ID, "body": "Thanks"})
+	if isErr {
+		t.Fatalf("reply: %v", d)
+	}
+	raw, _ := json.Marshal(d)
+	if strings.Contains(string(raw), "Amount due") || strings.Contains(string(raw), "184") {
+		t.Fatalf("quoted original leaked into the agent's draft result: %s", raw)
+	}
+	stored, _ := app.Store.GetDraft(int64(d["draft"].(map[string]any)["id"].(float64)))
+	if strings.Contains(stored.Body, "Amount due") {
+		t.Fatalf("the stored agent draft quotes a body the agent may not read: %q", stored.Body)
+	}
+	if _, isErr := call(t, wr, "save_attachment", map[string]any{"message_id": msgs[0].ID, "index": 0}); !isErr {
+		t.Fatal("attachments must be refused while bodies are hidden")
+	}
+}
