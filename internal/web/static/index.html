@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>OpenMail</title>
+<link rel="stylesheet" href="/static/style.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a84ff'/%3E%3Cpath d='M6 11l10 7 10-7M6 11v10h20V11' fill='none' stroke='white' stroke-width='2.2' stroke-linejoin='round'/%3E%3C/svg%3E">
+</head>
+<body>
+<a class="skip" href="#list">Skip to messages</a>
+<div id="app" data-layout="three-pane" data-pane="list">
+  <div id="scrim" aria-hidden="true"></div>
+  <nav id="sidebar" aria-label="Mailboxes">
+    <header>
+      <h1>OpenMail</h1>
+      <button class="btn icon" id="btn-compose-side" title="New message (c)" aria-label="New message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"/></svg></button>
+    </header>
+    <div class="side-scroll" id="side"></div>
+    <div id="syncstatus" role="status"></div>
+    <div class="side-foot">
+      <button class="side-item" data-go="agents"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V4M9 13h.01M15 13h.01"/></svg><span class="name">Agents</span><span class="badge hot" id="b-approve" hidden></span></button>
+      <button class="side-item" data-go="rules"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg><span class="name">Rules</span></button>
+      <button class="side-item" data-go="accounts"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg><span class="name">Accounts</span></button>
+      <button class="side-item" data-go="settings"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1.2l2-1.6-2-3.4-2.4 1a7 7 0 00-2-1.2L14 3h-4l-.5 2.6a7 7 0 00-2 1.2l-2.4-1-2 3.4 2 1.6A7 7 0 005 12c0 .4 0 .8.1 1.2l-2 1.6 2 3.4 2.4-1a7 7 0 002 1.2L10 21h4l.5-2.6a7 7 0 002-1.2l2.4 1 2-3.4-2-1.6c.1-.4.1-.8.1-1.2z"/></svg><span class="name">Settings</span></button>
+    </div>
+  </nav>
+
+  <section id="listpane" aria-label="Message list">
+    <div class="toolbar">
+      <button class="btn icon" id="menubtn" aria-label="Mailboxes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <input type="search" id="q" placeholder="Search mail" title="Search syntax: from: subject: is:unread has:attachment after:7d in:inbox (press ? for all)" aria-label="Search mail" autocomplete="off" spellcheck="false">
+      <button class="btn icon" id="btn-refresh" title="Check for new mail (⌘R)" aria-label="Check for new mail"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 11-2.3-5.7M20 4v5h-5"/></svg></button>
+    </div>
+    <div id="viewtitle"></div>
+    <div id="list" role="listbox" tabindex="0" aria-label="Conversations" aria-activedescendant=""></div>
+  </section>
+
+  <main id="reader" aria-label="Message">
+    <div class="actions" id="actions" role="toolbar" aria-label="Message actions"></div>
+    <div id="thread" tabindex="-1"></div>
+  </main>
+
+  <section id="page" aria-label="Page"></section>
+</div>
+
+<div id="live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+<div id="toasts" role="region" aria-label="Notifications"></div>
+
+<dialog id="compose" aria-labelledby="c-title">
+  <form method="dialog" id="c-form" autocomplete="off">
+    <h2 id="c-title">New message</h2>
+    <div class="dbody">
+      <div class="crow"><label for="c-from">From</label><select id="c-from"></select></div>
+      <div class="crow"><label for="c-to">To</label><input id="c-to" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sug-to" spellcheck="false"><ul class="suggest" id="sug-to" role="listbox" hidden></ul></div>
+      <div class="crow" id="c-ccrow" hidden><label for="c-cc">Cc</label><input id="c-cc" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sug-cc" spellcheck="false"><ul class="suggest" id="sug-cc" role="listbox" hidden></ul></div>
+      <div class="crow" id="c-bccrow" hidden><label for="c-bcc">Bcc</label><input id="c-bcc" type="text" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sug-bcc" spellcheck="false"><ul class="suggest" id="sug-bcc" role="listbox" hidden></ul></div>
+      <div class="crow"><label for="c-subject">Subject</label><input id="c-subject" type="text"></div>
+      <div class="crow" style="grid-template-columns:1fr"><label for="c-body" class="sr-only">Message</label><textarea id="c-body" rows="12"></textarea>
+        <div id="c-tools" role="toolbar" aria-label="Formatting" hidden>
+          <button type="button" class="btn icon" data-cmd="bold" aria-label="Bold" title="Bold (Ctrl/⌘B)"><b>B</b></button>
+          <button type="button" class="btn icon" data-cmd="italic" aria-label="Italic" title="Italic (Ctrl/⌘I)"><i>I</i></button>
+          <button type="button" class="btn icon" data-cmd="underline" aria-label="Underline" title="Underline (Ctrl/⌘U)"><u>U</u></button>
+          <button type="button" class="btn icon" data-cmd="insertUnorderedList" aria-label="Bulleted list" title="Bulleted list">• ≡</button>
+          <button type="button" class="btn icon" data-cmd="insertOrderedList" aria-label="Numbered list" title="Numbered list">1. ≡</button>
+          <button type="button" class="btn icon" data-cmd="formatBlock:blockquote" aria-label="Quote" title="Quote">❝</button>
+          <button type="button" class="btn icon" data-cmd="link" aria-label="Link" title="Link (Ctrl/⌘K in the editor)">Link</button>
+          <button type="button" class="btn icon" data-cmd="removeFormat" aria-label="Clear formatting" title="Clear formatting">Tx</button>
+        </div>
+        <div id="c-rich" class="editor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Message" spellcheck="true" hidden></div></div>
+      <div class="chips" id="c-files"></div>
+      <div id="c-status" class="hint" role="status" style="color:var(--fg-3);font-size:.82rem;margin:6px 0 0 72px"></div>
+    </div>
+    <div class="dfoot">
+      <button type="button" class="btn" id="c-ccbtn">Cc / Bcc</button>
+      <button type="button" class="btn" id="c-mode" aria-pressed="false" title="Switch between plain text and formatted text">Format</button>
+      <label class="btn" for="c-attach">Attach<input id="c-attach" type="file" multiple hidden></label>
+      <span class="spacer"></span>
+      <button type="button" class="btn danger" id="c-discard">Discard</button>
+      <button type="button" class="btn" id="c-close">Save and close</button>
+      <button type="button" class="btn primary" id="c-send">Send <kbd id="send-kbd">⌘↵</kbd></button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="palette" aria-label="Command palette">
+  <div class="dlg">
+    <input id="p-input" type="text" role="combobox" aria-expanded="true" aria-controls="p-list" aria-label="Type a command" placeholder="Type a command or search…" autocomplete="off">
+    <ul id="p-list" role="listbox"></ul>
+  </div>
+</dialog>
+
+<dialog id="dlg" aria-labelledby="dlg-title"><div class="dlg" id="dlg-inner"></div></dialog>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
