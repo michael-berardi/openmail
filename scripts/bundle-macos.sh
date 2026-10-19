@@ -51,10 +51,15 @@ cat > "$APP/Contents/Info.plist" <<PLIST
   </dict></array>
 </dict></plist>
 PLIST
-xattr -cr "$APP"
-if [ -n "${SIGN_ID:-}" ]; then
-  codesign --force --deep --options runtime --timestamp --sign "$SIGN_ID" "$APP" >/dev/null
-else
-  codesign --force --deep --sign - "$APP" >/dev/null
-fi
+# macOS re-tags freshly written files with com.apple.provenance, which codesign rejects; clear and retry.
+for try in 1 2 3 4 5; do
+  xattr -cr "$APP"
+  if [ -n "${SIGN_ID:-}" ]; then
+    codesign --force --deep --options runtime --timestamp --sign "$SIGN_ID" "$APP" >/dev/null 2>&1 && break
+  else
+    codesign --force --deep --sign - "$APP" >/dev/null 2>&1 && break
+  fi
+  [ "$try" = 5 ] && { echo "codesign failed after 5 attempts" >&2; exit 1; }
+  sleep 1
+done
 echo "built $APP ($(du -sh "$APP" | cut -f1))"

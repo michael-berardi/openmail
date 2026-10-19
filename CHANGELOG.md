@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 (unreleased)
+## 0.1.0 (2026-10-19)
 
 - Incremental sync with CONDSTORE, messages over 25 MB downloaded on demand, compressed local storage.
 - Drafts mirror to the server's Drafts folder; server drafts can be taken over for editing.

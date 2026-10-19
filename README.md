@@ -3,7 +3,7 @@
 An open mail client for people and agents. One Go binary: sync engine, web app, command line and MCP server over a local SQLite database. MIT licensed.
 
 ```
-make install-app           # builds OpenMail.app (native window, system web view) into ~/Applications
+make install-app           # or download the notarized app from Releases
 openmail import apple      # bring over your Apple Mail accounts, rules, signatures, VIPs
 claude mcp add openmail -- openmail mcp --scope write
 ```
@@ -23,13 +23,17 @@ The desktop app is a Go program in a native window using the system web view, so
 
 ## Install
 
+**macOS app:** download `OpenMail-<version>-macos-universal.zip` from the [latest release](https://github.com/michael-berardi/openmail/releases/latest), unzip, and drag OpenMail to Applications. It is signed and notarized, for Apple silicon and Intel.
+
+**Command line (macOS, Linux, Windows):** download `openmail-cli-<version>-<os>-<arch>` from the same page, or build it:
+
 ```
-git clone <this repo> && cd openmail
+git clone https://github.com/michael-berardi/openmail && cd openmail
 make install        # builds bin/openmail and copies it to ~/.local/bin
 openmail doctor     # checks setup and tells you how to fix anything
 ```
 
-Requires Go 1.26 to build. No other runtime dependencies; SQLite is compiled in.
+The command line and the MCP server share the app's data, so install both if you use agents. Building needs Go 1.26 (the macOS app also needs Xcode's command line tools). SQLite is compiled in; there are no other runtime dependencies. `SHA256SUMS` on each release lists the file checksums.
 
 ## Commands
 
