@@ -74,3 +74,7 @@ make demo           # fictional mailbox on :7788
 ```
 
 Layout: `internal/core` (service layer used by every surface), `internal/store` (SQLite), `internal/web` (API and embedded UI), `internal/mcpserver`, `internal/apple`, `internal/discover`, `internal/imapx`, `internal/compose`, `cmd/openmail`.
+
+---
+
+Part of [Pareto Cybernetics](https://paretocybernetics.com/): free, private, open-source tools for working with AI agents.
