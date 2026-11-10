@@ -2,6 +2,20 @@
 
 An open mail client for people and agents. One Go binary: sync engine, web app, command line and MCP server over a local SQLite database. MIT licensed.
 
+## Download
+
+Version 0.1.0. Each file is listed with its checksums in [SHA256SUMS](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/SHA256SUMS). All releases are on the [releases page](https://github.com/michael-berardi/openmail/releases/latest).
+
+| Platform | File |
+|---|---|
+| macOS app (Apple silicon and Intel) | [OpenMail-v0.1.0-macos-universal.zip](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/OpenMail-v0.1.0-macos-universal.zip) |
+| macOS command line (Apple silicon and Intel) | [openmail-cli-v0.1.0-macos-universal.zip](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/openmail-cli-v0.1.0-macos-universal.zip) |
+| Linux command line, arm64 | [openmail-cli-v0.1.0-linux-arm64.tar.gz](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/openmail-cli-v0.1.0-linux-arm64.tar.gz) |
+| Linux command line, x86-64 | [openmail-cli-v0.1.0-linux-amd64.tar.gz](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/openmail-cli-v0.1.0-linux-amd64.tar.gz) |
+| Windows command line, x86-64 | [openmail-cli-v0.1.0-windows-amd64.zip](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/openmail-cli-v0.1.0-windows-amd64.zip) |
+
+Linux and Windows have no desktop app; use `openmail serve` and open the printed address in a browser.
+
 ```
 make install-app           # or download the notarized app from Releases
 openmail import apple      # bring over your Apple Mail accounts, rules, signatures, VIPs
