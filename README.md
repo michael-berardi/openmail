@@ -1,8 +1,8 @@
 # OpenMail
 
-An open mail client for people and agents. One Go binary: sync engine, web app, command line and MCP server over a local SQLite database. MIT licensed.
+A mail client for people who use both a browser and command-line tools, with scoped MCP access for agents. One Go binary stores IMAP mail in local SQLite and provides search, drafts, SMTP sending and a web app. MIT licensed.
 
-## Download
+## Install
 
 Version 0.1.0. Each file is listed with its checksums in [SHA256SUMS](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/SHA256SUMS). All releases are on the [releases page](https://github.com/michael-berardi/openmail/releases/latest).
 
@@ -14,81 +14,70 @@ Version 0.1.0. Each file is listed with its checksums in [SHA256SUMS](https://gi
 | Linux command line, x86-64 | [openmail-cli-v0.1.0-linux-amd64.tar.gz](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/openmail-cli-v0.1.0-linux-amd64.tar.gz) |
 | Windows command line, x86-64 | [openmail-cli-v0.1.0-windows-amd64.zip](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/openmail-cli-v0.1.0-windows-amd64.zip) |
 
-Linux and Windows have no desktop app; use `openmail serve` and open the printed address in a browser.
+Unzip the macOS app and drag it to Applications. Linux and Windows use the command-line binary and `openmail serve`; there is no desktop app for those platforms.
 
-```
-make install-app           # or download the notarized app from Releases
-openmail import apple      # bring over your Apple Mail accounts, rules, signatures, VIPs
-claude mcp add openmail -- openmail mcp --scope write
-```
+From a source checkout, with Go 1.26.4 or newer and Make:
 
-The desktop app is a Go program in a native window using the system web view, so there is no bundled browser: about 18 MB on disk and about 45 MB of memory in the app process. It syncs while open, keeps syncing with the window closed (quit with ⌘Q), shows the unread count on the Dock icon, posts notifications for new mail, handles `mailto:` links, and remembers its window size. `openmail serve` runs the same thing headless in a browser.
-
-## What it does
-
-- **Any IMAP/SMTP account.** Type an address; servers come from a provider list, Mozilla autoconfig, DNS SRV records, MX hints or a host probe. The login is checked against the real servers before anything is saved. iCloud, Gmail, Outlook, Yahoo, Fastmail, Zoho, GMX, Proton Bridge and custom domains work out of the box.
-- **Apple Mail migration.** Reads the accounts, rules, signatures and VIPs Apple Mail already has, and looks for saved passwords in the macOS Keychain. See [docs/apple-mail.md](docs/apple-mail.md).
-- **Fast, light and offline.** Local copy of your mail, IMAP IDLE push, incremental CONDSTORE sync, compressed storage, messages over 25 MB downloaded on demand, full-text search, conversations, snooze, undo send. Changes made offline are queued and replayed when the server is reachable; one that keeps failing is reported in the audit log.
-- **Search syntax.** `from:alice subject:"q3 plan" is:unread has:attachment after:7d in:inbox account:me@x.com budget`
-- **Customisable.** Themes (system, light, dark, high contrast), density, layout, text size, accent colour, every keyboard shortcut, a command palette (⌘K), rules.
-- **Accessible.** Landmarks, listbox and dialog semantics, live announcements, full keyboard operation, visible focus, reduced motion, forced-colors support, text size up to 180%.
-- **Private by default.** Remote images are blocked until you allow them. Message HTML is sanitised and shown in a sandboxed frame with a locked-down content policy. Passwords live in the OS keychain.
-- **Built for agents.** An MCP server with scopes, a send policy, an approval flow and an audit log. See [docs/agents.md](docs/agents.md).
-
-## Install
-
-**macOS app:** download `OpenMail-<version>-macos-universal.zip` from the [latest release](https://github.com/michael-berardi/openmail/releases/latest), unzip, and drag OpenMail to Applications. It is signed and notarized, for Apple silicon and Intel.
-
-**Command line (macOS, Linux, Windows):** download `openmail-cli-<version>-<os>-<arch>` from the same page, or build it:
-
-```
-git clone https://github.com/michael-berardi/openmail && cd openmail
-make install        # builds bin/openmail and copies it to ~/.local/bin
-openmail doctor     # checks setup and tells you how to fix anything
+```sh
+make install
 ```
 
-The command line and the MCP server share the app's data, so install both if you use agents. Building needs Go 1.26 (the macOS app also needs Xcode's command line tools). SQLite is compiled in; there are no other runtime dependencies. `SHA256SUMS` on each release lists the file checksums.
+This builds the CLI and installs it in `~/.local/bin`, creating that directory if needed. Add it to your `PATH`, or run `~/.local/bin/openmail`. SQLite is compiled in. Password storage uses the OS keychain; Linux needs a running Secret Service.
 
-## Commands
+To build the macOS desktop app, also install Xcode command-line tools and `rsvg-convert` (from librsvg), then run `make install-app`. This installs into `~/Applications`; a local build is not notarized.
 
-| | |
+## Try it
+
+Use a new, separate directory for fictional mail:
+
+```sh
+openmail demo --home ./demo-mail --no-open
+```
+
+Open the printed local URL yourself. The demo does not start the sync engine. Stop it with Ctrl-C. Never point the demo at an existing mail data directory: it can display existing accounts.
+
+For your own mailbox:
+
+```sh
+openmail accounts add you@example.com
+openmail serve
+```
+
+Account setup discovers IMAP/SMTP settings and checks the login. Provider policies may require app passwords or [OAuth configuration](docs/oauth.md). `serve` opens a browser by default; use `--no-open` to print the URL without opening one. See [Apple Mail migration](docs/apple-mail.md) to import accounts, rules, signatures and VIPs.
+
+## Mail and agents
+
+- Local full-text search, conversations, IMAP IDLE, incremental CONDSTORE sync and queued offline changes.
+- Server-synced drafts, formatted composition, snooze, rules and an undo-send window.
+- Remote images blocked by default; sanitized message HTML in a sandboxed frame.
+- Themes, density, text size, keyboard shortcuts and a command palette.
+- Scoped MCP over stdio and HTTP, send approval and an audit log. See [agent setup and policy](docs/agents.md).
+
+```sh
+openmail ls 'from:sender subject:"q3 plan" is:unread has:attachment after:7d in:inbox budget'
+openmail mcp --scope write
+```
+
+| Commands | Purpose |
 |---|---|
-| `serve` | sync engine, web app, JSON API and MCP over HTTP |
-| `accounts add <email>` | add an account (`list`, `remove`, `test`, `login`, `password`, `update`) |
-| `import apple` | import from Apple Mail |
-| `ls [query]`, `read <id>`, `thread <id>` | read mail (`--json` on all) |
-| `send`, `reply <id>`, `forward <id>`, `drafts …` | write mail |
-| `archive`, `trash`, `junk`, `flag`, `mark`, `move`, `snooze` | organise |
-| `rules …`, `config …`, `tokens …`, `audit` | configure |
-| `mcp` | MCP server on stdio |
-| `doctor` | diagnose |
-| `demo --home DIR` | try the app on fictional mail, no network |
+| `ls [query]`, `read <id>`, `thread <id>` | Read mail; each accepts `--json` |
+| `send`, `reply <id>`, `forward <id>`, `drafts …` | Compose and send |
+| `archive`, `trash`, `junk`, `flag`, `mark`, `move`, `snooze` | Organise |
+| `accounts …`, `folders …`, `sync` | Manage accounts and syncing |
+| `rules …`, `config …`, `tokens …`, `audit` | Configure and inspect |
+| `doctor` | Check the database, keychain and account connections |
 
-Data lives in `~/Library/Application Support/OpenMail` (macOS), `~/.local/share/openmail` (Linux), `%APPDATA%\OpenMail` (Windows). Set `OPENMAIL_HOME` to move it.
+Data defaults to `~/Library/Application Support/OpenMail` on macOS, `$XDG_DATA_HOME/openmail` (or `~/.local/share/openmail`) on Linux, and `%APPDATA%\OpenMail` on Windows. Override it with `OPENMAIL_HOME`.
 
-## Security model
+The web app defaults to `127.0.0.1:7777`, requires a token or authenticated cookie, checks Host headers and protects cookie-authenticated writes. Agent scopes are `read`, `write`, `send` and `admin`; agents cannot approve their own sends. Message content is untrusted input, even after filtering.
 
-- The web app and API listen on `127.0.0.1`, require a bearer token (or the cookie set by the printed URL), reject unexpected `Host` headers and require a header on cookie-authenticated writes.
-- Tokens have scopes: `read`, `write`, `send`, `admin`. Only a person with the browser token can approve an agent's send.
-- Message bodies shown to agents have hidden text, zero-width and bidi characters removed, are labelled untrusted, and are checked for spoofing and instruction-injection signals.
-- Everything that changes state is written to an audit log.
-
-## Scope
-
-- Drafts, including reply and forward drafts, are saved to the server's Drafts folder shortly after you stop typing (replacing the previous version), so they follow you to Apple Mail and your phone. Drafts started elsewhere open with **Edit draft**.
-- The composer switches between plain text and formatted text (bold, italic, lists, quotes, links). Pasted text is inserted as plain text.
-- IMAP and SMTP only. Exchange (EWS/ActiveSync) and POP are out of scope, as are a calendar, contacts app, S/MIME and PGP.
-- If Apple Mail import fails on your Mac, run `openmail import apple --diagnose` and share the output; it contains no addresses or names.
+IMAP and SMTP only: no Exchange EWS/ActiveSync, POP, calendar, contacts app, S/MIME or PGP.
 
 ## Development
 
+```sh
+make test  # go vet, race tests and isolated install regression test
+make build # CLI in bin/openmail
 ```
-make test           # go vet and go test -race
-make demo           # fictional mailbox on :7788
-```
 
-Layout: `internal/core` (service layer used by every surface), `internal/store` (SQLite), `internal/web` (API and embedded UI), `internal/mcpserver`, `internal/apple`, `internal/discover`, `internal/imapx`, `internal/compose`, `cmd/openmail`.
-
----
-
-Part of [Pareto Cybernetics](https://paretocybernetics.com/): free, private, open-source tools for working with AI agents.
+The service layer is in `internal/core`; SQLite in `internal/store`; the API and embedded UI in `internal/web`; MCP in `internal/mcpserver`. See [Contributing](CONTRIBUTING.md), [Security](SECURITY.md) and [Privacy](PRIVACY.md).

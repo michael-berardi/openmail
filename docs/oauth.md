@@ -1,6 +1,6 @@
 # Google and Microsoft sign-in
 
-OpenMail ships no OAuth client IDs; you register your own, once. Until then Gmail and Outlook work with app passwords.
+OpenMail ships no OAuth client IDs; you register your own, once. App-password support depends on your provider and account policy; do not assume it is available, especially for Microsoft accounts.
 
 ## Google
 
