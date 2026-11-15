@@ -4,17 +4,13 @@ A mail client for people who use both a browser and command-line tools, with sco
 
 ## Install
 
-Version 0.1.0. Each file is listed with its checksums in [SHA256SUMS](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/SHA256SUMS). All releases are on the [releases page](https://github.com/michael-berardi/openmail/releases/latest).
+**macOS app (Apple silicon and Intel):** download the signed, notarized [app zip from the latest release](https://github.com/michael-berardi/openmail/releases/latest), unzip it, and drag OpenMail to Applications.
 
-| Platform | File |
-|---|---|
-| macOS app (Apple silicon and Intel) | [OpenMail-v0.1.0-macos-universal.zip](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/OpenMail-v0.1.0-macos-universal.zip) |
-| macOS command line (Apple silicon and Intel) | [openmail-cli-v0.1.0-macos-universal.zip](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/openmail-cli-v0.1.0-macos-universal.zip) |
-| Linux command line, arm64 | [openmail-cli-v0.1.0-linux-arm64.tar.gz](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/openmail-cli-v0.1.0-linux-arm64.tar.gz) |
-| Linux command line, x86-64 | [openmail-cli-v0.1.0-linux-amd64.tar.gz](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/openmail-cli-v0.1.0-linux-amd64.tar.gz) |
-| Windows command line, x86-64 | [openmail-cli-v0.1.0-windows-amd64.zip](https://github.com/michael-berardi/openmail/releases/download/v0.1.0/openmail-cli-v0.1.0-windows-amd64.zip) |
+**Command line:** download and extract your platform's CLI archive from the [latest release](https://github.com/michael-berardi/openmail/releases/latest), then put `openmail` (`openmail.exe` on Windows) on your `PATH`.
 
-Unzip the macOS app and drag it to Applications. Linux and Windows use the command-line binary and `openmail serve`; there is no desktop app for those platforms.
+CLI binaries are available for macOS (universal), Linux (arm64 or x86-64), and Windows (x86-64). Each release includes `SHA256SUMS`. Linux and Windows use `openmail serve`; there is no desktop app for those platforms.
+
+### From source
 
 From a source checkout, with Go 1.26.4 or newer and Make:
 
@@ -81,3 +77,7 @@ make build # CLI in bin/openmail
 ```
 
 The service layer is in `internal/core`; SQLite in `internal/store`; the API and embedded UI in `internal/web`; MCP in `internal/mcpserver`. See [Contributing](CONTRIBUTING.md), [Security](SECURITY.md) and [Privacy](PRIVACY.md).
+
+---
+
+Part of [Pareto Cybernetics](https://paretocybernetics.com/): free, private, open-source tools for working with AI agents.
