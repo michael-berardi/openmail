@@ -5,8 +5,10 @@ build:
 	go build -trimpath -ldflags "-s -w -X github.com/michael-berardi/openmail/internal/core.Version=$(VERSION)" -o bin/openmail ./cmd/openmail
 test:
 	go vet ./... && go test -race ./...
+	sh scripts/test-install.sh
 install: build
-	install -m 0755 bin/openmail $(HOME)/.local/bin/openmail
+	mkdir -p "$(HOME)/.local/bin"
+	install -m 0755 bin/openmail "$(HOME)/.local/bin/openmail"
 demo: build
 	@d=$$(mktemp -d); echo "demo data in $$d"; ./bin/openmail demo --home $$d
 clean:
