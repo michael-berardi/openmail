@@ -125,6 +125,7 @@ function hue(s) { let x = 0; for (const c of s) x = (x * 31 + c.charCodeAt(0)) >
 function accountColor(id) { const a = (S.ov?.accounts || []).find((x) => x.id === id); return a ? a.color : 'var(--accent)'; }
 function selfAddrs() { return new Set((S.ov?.accounts || []).map((a) => a.email.toLowerCase())); }
 const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+const pl = (n, one, many = one + 's') => `${n} ${n === 1 ? one : many}`;
 
 // ---------- settings -> appearance ----------
 function applySettings() {
@@ -174,12 +175,15 @@ function renderSidebar() {
     const b = h('button', { class: 'side-item', 'aria-current': S.view.key === opts.key ? 'page' : false, onclick: () => { closeMenu(); opts.go ? opts.go() : navigate({ kind: 'query', q: opts.q, title: opts.title, key: opts.key, acct: opts.acct, mbName: opts.mbName }); } },
       icon(opts.icon, 'ico'), h('span', { class: 'name', text: opts.title }));
     const c = opts.count ? opts.count() : 0;
-    if (c > 0) b.append(h('span', { class: 'badge' + (opts.hot ? ' hot' : ''), text: String(c), 'aria-label': `${c} unread` }));
+    if (c > 0) {
+      b.append(h('span', { class: 'badge' + (opts.hot ? ' hot' : ''), text: String(c), 'aria-hidden': 'true' }));
+      b.setAttribute('aria-label', `${opts.title}, ${opts.noun ? pl(c, opts.noun) : pl(c, 'unread', 'unread')}`);
+    }
     return b;
   };
   for (const s of SMART) side.append(item(s));
   const dn = (S.ov?.needs_approval || 0) + draftCount();
-  side.append(item({ key: 'page:drafts', title: 'Drafts', icon: 'draft', count: () => dn, hot: (S.ov?.needs_approval || 0) > 0, go: () => showPage('drafts') }));
+  side.append(item({ key: 'page:drafts', title: 'Drafts', icon: 'draft', noun: 'draft', count: () => dn, hot: (S.ov?.needs_approval || 0) > 0, go: () => showPage('drafts') }));
   for (const a of S.ov?.accounts || []) {
     const g = h('div', { class: 'side-group' }, h('span', { class: 'dotc', style: { background: a.color || 'var(--accent)' } }), h('span', { class: 'gname', title: a.email, text: a.name && a.name !== a.email ? a.name : a.email }));
     if (!a.enabled) g.append(h('span', { class: 'pill', text: 'off' }));
@@ -194,7 +198,8 @@ function renderSidebar() {
   if (!(S.ov?.accounts || []).length) side.append(h('div', { class: 'empty' }, h('p', { text: 'No accounts yet.' }), h('button', { class: 'btn primary', text: 'Add account', onclick: () => addAccountDialog() })));
   const nb = $('#b-approve');
   const na = S.ov?.needs_approval || 0;
-  nb.hidden = na === 0; nb.textContent = String(na); nb.setAttribute('aria-label', `${na} waiting for approval`);
+  nb.hidden = na === 0; nb.textContent = String(na); nb.setAttribute('aria-hidden', 'true');
+  $('[data-go="agents"]').setAttribute('aria-label', na ? `Agents, ${na} waiting for approval` : 'Agents');
   renderStatus();
   document.title = (inboxUnread() > 0 ? `(${inboxUnread()}) ` : '') + 'OpenMail';
 }
@@ -209,7 +214,7 @@ function renderStatus() {
   if (err) box.append(h('span', { class: 'err', text: `${err.account}: ${err.error}` }));
   else if (busy) box.append(`Syncing ${busy.account}${busy.progress ? ' · ' + busy.progress : ''}`);
   else if (st.length) { const t = Math.max(...st.map((x) => x.last_sync || 0)); if (t) box.append(`Updated ${fmtDate(t)}`); }
-  if (S.ov?.pending_ops) box.append(h('div', { text: `${S.ov.pending_ops} change(s) waiting to reach the server` }));
+  if (S.ov?.pending_ops) box.append(h('div', { text: `${pl(S.ov.pending_ops, 'change')} waiting to reach the server` }));
 }
 
 function closeMenu() { $('#app').removeAttribute('data-menu'); }
@@ -220,6 +225,8 @@ function navigate(view) {
   $('#app').removeAttribute('data-page');
   $('#app').setAttribute('data-pane', 'list');
   $('#q').value = view.kind === 'search' ? view.q : '';
+  $('#viewtitle').replaceChildren(h('span', { text: view.title || 'Search' }));
+  $('#list').replaceChildren(h('div', { class: 'empty', text: 'Loading…' }));
   renderSidebar(); renderReader(); loadList();
 }
 
@@ -261,7 +268,7 @@ function renderList() {
   }
   for (const t of S.threads) list.append(rowFor(t));
   if (S.more) list.append(h('div', { class: 'more', role: 'presentation' }, h('button', { class: 'btn', text: 'Show more', onclick: () => loadList(true) })));
-  else if (S.view.mbName) list.append(h('div', { class: 'more', role: 'presentation' }, h('button', { class: 'btn', text: 'Download older mail from the server', onclick: async (e) => { e.target.disabled = true; try { const r = await api('/api/load-older', { method: 'POST', body: { account: S.view.acct, mailbox: S.view.mbName, count: 200 } }); toast(r.loaded ? `Downloaded ${r.loaded} older message(s)` : 'No older mail on the server'); if (r.loaded) { refreshOverview(); loadList(); } } catch (er) { fail(er); } e.target.disabled = false; } })));
+  else if (S.view.mbName) list.append(h('div', { class: 'more', role: 'presentation' }, h('button', { class: 'btn', text: 'Download older mail from the server', onclick: async (e) => { e.target.disabled = true; try { const r = await api('/api/load-older', { method: 'POST', body: { account: S.view.acct, mailbox: S.view.mbName, count: 200 } }); toast(r.loaded ? `Downloaded ${pl(r.loaded, 'older message')}` :'No older mail on the server'); if (r.loaded) { refreshOverview(); loadList(); } } catch (er) { fail(er); } e.target.disabled = false; } })));
   list.scrollTop = prevScroll;
   if (S.sel) markSelected(); else if (!S.thread.length) renderReader();
 }
@@ -673,6 +680,7 @@ function insertLink() {
 }
 
 function openCompose(draft = {}) {
+  closeMenu();
   const dlg = $('#compose');
   C.draft = draft; C.files = (draft.files || []).map((f) => ({ ...f })); C.dirty = false;
   const from = $('#c-from'); from.replaceChildren();
@@ -795,6 +803,7 @@ function wireCompose() {
   $('#c-close').addEventListener('click', closeCompose);
   $('#c-send').addEventListener('click', sendCompose);
   $('#c-discard').addEventListener('click', async () => {
+    if (!composeEmpty() && !confirm('Discard this draft?')) return;
     try { if (C.draft?.id) await api('/api/drafts/' + C.draft.id, { method: 'DELETE' }); clearTimeout(C.timer); C.draft = null; dlg.close(); toast('Draft discarded'); loadDrafts(); } catch (e) { fail(e); }
   });
   dlg.addEventListener('cancel', (e) => { e.preventDefault(); closeCompose(); });
@@ -807,6 +816,7 @@ function wireCompose() {
     }
     e.target.value = ''; renderFiles(); scheduleSave();
   });
+  $('#c-attach-btn').addEventListener('click', () => $('#c-attach').click());
   for (const k of ['to', 'cc', 'bcc']) suggest($('#c-' + k), $('#sug-' + k));
 }
 
@@ -839,7 +849,7 @@ async function loadDrafts() { try { S.drafts = (await api('/api/drafts')) || [];
 
 // ---------- pages ----------
 function showPage(name) {
-  S.page = name; S.view = { kind: 'page', key: 'page:' + name, title: name };
+  S.page = name; S.view = { kind: 'page', key: 'page:' + name, title: name }; S.sel = null; S.thread = [];
   $('#app').setAttribute('data-page', 'true'); closeMenu();
   renderSidebar(); renderPage();
   $('#page').focus && $('#page').setAttribute('tabindex', '-1');
@@ -874,7 +884,7 @@ async function pageDrafts() {
       h('button', { class: 'btn', text: 'Reject', onclick: async () => { try { await api(`/api/drafts/${d.id}/cancel`, { method: 'POST' }); toast('Returned to drafts'); await loadDrafts(); refreshOverview(); } catch (e) { fail(e); } } }));
     if (d.state === 'queued') row.append(h('button', { class: 'btn', text: 'Cancel send', onclick: async () => { try { await api(`/api/drafts/${d.id}/cancel`, { method: 'POST' }); toast('Send cancelled'); await loadDrafts(); } catch (e) { fail(e); } } }));
     if (d.state === 'failed') row.append(h('button', { class: 'btn primary', text: 'Retry', onclick: async () => { try { await api(`/api/drafts/${d.id}/send`, { method: 'POST' }); await loadDrafts(); } catch (e) { fail(e); } } }));
-    row.append(h('button', { class: 'btn danger', text: 'Delete', onclick: async () => { try { await api('/api/drafts/' + d.id, { method: 'DELETE' }); await loadDrafts(); } catch (e) { fail(e); } } }));
+    row.append(h('button', { class: 'btn danger', text: 'Delete', onclick: async () => { if (!confirm(`Delete the draft “${d.subject || '(no subject)'}”?`)) return; try { await api('/api/drafts/' + d.id, { method: 'DELETE' }); await loadDrafts(); } catch (e) { fail(e); } } }));
     card.append(row); root.append(card);
   }
   return root;
@@ -1080,7 +1090,7 @@ function addAccountDialog() {
           const r = await api(`/api/accounts/${encodeURIComponent(res.account.id)}/login`, { method: 'POST' });
           window.open(r.auth_url, '_blank', 'noopener');
           status.textContent = 'Finish signing in in the new browser tab…';
-          const wait = setInterval(async () => { await refreshOverview(true); const st = (S.ov.status || []).find((x) => x.account === res.account.id); if (st && (st.last_sync || st.state === 'syncing')) { clearInterval(wait); close(); toast(res.account.email + ' added'); } }, 2000);
+          const wait = setInterval(async () => { if (!$('#dlg').open) { clearInterval(wait); return; } await refreshOverview(true); const st = (S.ov.status || []).find((x) => x.account === res.account.id); if (st && (st.last_sync || st.state === 'syncing')) { clearInterval(wait); close(); toast(res.account.email + ' added'); } }, 2000);
           return;
         }
         close(); toast(req.email + ' added. Downloading mail…'); await refreshOverview(); if (S.page === 'accounts') renderPage(); loadList();
@@ -1112,7 +1122,8 @@ async function importAppleDialog() {
     };
     const render = () => {
       body.replaceChildren();
-      body.append(h('p', { text: `${found.accounts.length} account(s), ${found.rules.length} rule(s), ${found.vips.length} VIP(s) found.` }));
+      found.accounts = found.accounts || []; found.rules = found.rules || []; found.vips = found.vips || [];
+      body.append(h('p', { text: `${pl(found.accounts.length, 'account')}, ${pl(found.rules.length, 'rule')}, ${pl(found.vips.length, 'VIP')} found.` }));
       const pws = {}, picks = {};
       const kc = h('input', { type: 'checkbox', id: 'ia-kc', checked: true });
       body.append(h('div', { class: 'form-row' }, h('label', { for: 'ia-kc', text: 'Look for saved passwords in the macOS Keychain first' }), kc, h('div', { class: 'hint', text: 'macOS asks you to allow each one.' })));
@@ -1130,7 +1141,7 @@ async function importAppleDialog() {
           const only = found.accounts.filter((c) => picks[c.email].checked).map((c) => c.email);
           const passwords = {}; for (const c of found.accounts) if (pws[c.email].value) passwords[c.email] = pws[c.email].value;
           const rep = await api('/api/import/apple', { method: 'POST', body: { only, passwords, try_keychain: kc.checked } });
-          out.replaceChildren(h('table', { class: 'data' }, h('tbody', {}, rep.results.map((r) => h('tr', {}, h('td', { text: r.email }), h('td', { text: r.status.replace('_', ' ') }), h('td', { text: r.detail || '' }))))), h('p', { text: `${rep.rules_imported} rule(s), ${rep.signatures_imported} signature(s), ${rep.vips_imported} VIP(s) imported.` }));
+          out.replaceChildren(h('table', { class: 'data' }, h('tbody', {}, (rep.results || []).map((r) => h('tr', {}, h('td', { text: r.email }), h('td', { text: r.status.replace('_', ' ') }), h('td', { text: r.detail || '' }))))), h('p', { text: `${pl(rep.rules_imported, 'rule')}, ${pl(rep.signatures_imported, 'signature')}, ${pl(rep.vips_imported, 'VIP')} imported.` }));
           await refreshOverview(); if (S.page === 'accounts') renderPage();
         } catch (er) { out.replaceChildren(h('p', { role: 'alert', text: er.message })); }
         e.target.disabled = false;
@@ -1157,11 +1168,11 @@ async function pageRules() {
       h('div', { style: { color: 'var(--fg-2)', margin: '4px 0' }, text: `If ${r.conditions.map(ruleCond).join(r.match_all ? ' and ' : ' or ')}: ${r.actions.map(ruleAct).join(', ')}` }),
       h('div', { class: 'btnrow' },
         h('button', { class: 'btn', text: r.enabled ? 'Turn off' : 'Turn on', onclick: async () => { try { await api('/api/rules', { method: 'POST', body: { ...r, enabled: !r.enabled } }); renderPage(); } catch (e) { fail(e); } } }),
-        h('button', { class: 'btn danger', text: 'Delete', onclick: async () => { try { await api('/api/rules/' + r.id, { method: 'DELETE' }); renderPage(); } catch (e) { fail(e); } } }))));
+        h('button', { class: 'btn danger', text: 'Delete', onclick: async () => { if (!confirm(`Delete the rule “${r.name}”?`)) return; try { await api('/api/rules/' + r.id, { method: 'DELETE' }); renderPage(); } catch (e) { fail(e); } } }))));
   }
   if (rules.length) root.append(h('div', { class: 'btnrow' },
-    h('button', { class: 'btn', text: 'Test on the last 30 days of Inbox', onclick: async () => { try { const r = await api('/api/rules/run', { method: 'POST', body: { query: 'in:inbox after:30d', dry_run: true } }); toast(`${r.matched} message(s) would be changed`); } catch (e) { fail(e); } } }),
-    h('button', { class: 'btn', text: 'Apply to the last 30 days of Inbox', onclick: async () => { try { const r = await api('/api/rules/run', { method: 'POST', body: { query: 'in:inbox after:30d' } }); toast(`${r.matched} message(s) changed`); loadList(); } catch (e) { fail(e); } } })));
+    h('button', { class: 'btn', text: 'Test on the last 30 days of Inbox', onclick: async () => { try { const r = await api('/api/rules/run', { method: 'POST', body: { query: 'in:inbox after:30d', dry_run: true } }); toast(`${pl(r.matched, 'message')} would be changed`); } catch (e) { fail(e); } } }),
+    h('button', { class: 'btn', text: 'Apply to the last 30 days of Inbox', onclick: async () => { try { const r = await api('/api/rules/run', { method: 'POST', body: { query: 'in:inbox after:30d' } }); toast(`${pl(r.matched, 'message')} changed`); loadList(); } catch (e) { fail(e); } } })));
   const folders = [...new Set((S.ov?.accounts || []).flatMap((a) => (a.mailboxes || []).map((m) => m.name)))];
   const dl = h('datalist', { id: 'folder-list' }, folders.map((f) => h('option', { value: f })));
   const folderRow = h('div', { class: 'form-row', hidden: true }, h('label', { for: 'r-folder', text: 'Folder' }), h('input', { type: 'text', id: 'r-folder', name: 'folder', list: 'folder-list', autocomplete: 'off' }));
@@ -1193,10 +1204,10 @@ async function pageAgents() {
   const pending = drafts.filter((d) => d.state === 'pending_approval');
   root.append(h('div', { class: 'card' }, h('strong', { text: `Send policy: ${({ draft_only: 'agents only write drafts', approve: 'agents ask for your approval', allow: 'agents send with an undo window' })[S.settings['agent.send_policy']] || S.settings['agent.send_policy']}` }),
     h('div', { class: 'btnrow' }, h('button', { class: 'btn', text: 'Change in Settings', onclick: () => showPage('settings') }))));
-  if (pending.length) { root.append(h('h3', { text: 'Waiting for your approval' })); root.append(h('p', {}, h('button', { class: 'btn primary', text: `Review ${pending.length} draft(s)`, onclick: () => showPage('drafts') }))); }
+  if (pending.length) { root.append(h('h3', { text: 'Waiting for your approval' })); root.append(h('p', {}, h('button', { class: 'btn primary', text: `Review ${pl(pending.length, 'draft')}`, onclick: () => showPage('drafts') }))); }
 
   root.append(h('h3', { text: 'Connect an agent' }));
-  const snippet = (label, text) => h('div', {}, h('div', { class: 'lbl', text: label }), h('pre', { class: 'code', text }), h('button', { class: 'btn', text: 'Copy', onclick: () => navigator.clipboard.writeText(text).then(() => toast('Copied'), () => toast('Copy failed: select the text instead', { error: true })) }));
+  const snippet = (label, text) => h('div', { class: 'agent-snippet' }, h('div', { class: 'lbl', text: label }), h('pre', { class: 'code', text }), h('button', { class: 'btn', text: 'Copy', onclick: () => navigator.clipboard.writeText(text).then(() => toast('Copied'), () => toast('Copy failed: select the text instead', { error: true })) }));
   const base = location.origin;
   root.append(h('div', { class: 'card' },
     snippet('Claude Code (stdio, can read, draft and organise)', 'claude mcp add openmail -- openmail mcp --scope write'),
@@ -1212,7 +1223,7 @@ async function pageAgents() {
     try { const r = await api('/api/tokens', { method: 'POST', body: { name: name.value.trim(), scope: scope.value } }); created.replaceChildren(h('div', { class: 'banner info', role: 'status' }, h('div', {}, 'Copy this key now. It is not shown again.', h('pre', { class: 'code', text: r.token })))); name.value = ''; const t2 = await api('/api/tokens'); renderTokens(t2); } catch (e) { fail(e); }
   } })), created);
   const tl = h('div'); tcard.append(tl); root.append(tcard);
-  const renderTokens = (list) => list.filter((t) => t.name !== 'web-ui').length === 0 ? tl.replaceChildren(h('p', { style: { color: 'var(--fg-3)' }, text: 'No keys.' })) : tl.replaceChildren(h('table', { class: 'data' }, h('thead', {}, h('tr', {}, ['Name', 'Scope', 'Last used', ''].map((x) => h('th', { text: x })))), h('tbody', {}, list.filter((t) => t.name !== 'web-ui').map((t) => h('tr', {}, h('td', { text: t.name }), h('td', { text: t.scope }), h('td', { text: t.last_used ? fmtDate(t.last_used, true) : 'never' }), h('td', {}, h('button', { class: 'btn danger', text: 'Revoke', onclick: async () => { try { await api('/api/tokens/' + encodeURIComponent(t.name), { method: 'DELETE' }); renderTokens(await api('/api/tokens')); } catch (e) { fail(e); } } })))))));
+  const renderTokens = (list) => list.filter((t) => t.name !== 'web-ui').length === 0 ? tl.replaceChildren(h('p', { style: { color: 'var(--fg-3)' }, text: 'No keys.' })) : tl.replaceChildren(h('table', { class: 'data' }, h('thead', {}, h('tr', {}, ['Name', 'Scope', 'Last used', ''].map((x) => h('th', { text: x })))), h('tbody', {}, list.filter((t) => t.name !== 'web-ui').map((t) => h('tr', {}, h('td', { text: t.name }), h('td', { text: t.scope }), h('td', { text: t.last_used ? fmtDate(t.last_used, true) : 'never' }), h('td', {}, h('button', { class: 'btn danger', text: 'Revoke', onclick: async () => { if (!confirm(`Revoke the key “${t.name}”? Agents using it will stop working.`)) return; try { await api('/api/tokens/' + encodeURIComponent(t.name), { method: 'DELETE' }); renderTokens(await api('/api/tokens')); } catch (e) { fail(e); } } })))))));
   renderTokens(tokens);
 
   root.append(h('h3', { text: 'Activity' }));
@@ -1296,7 +1307,8 @@ const shiftNeeded = (k) => k !== k.toLowerCase();
 function onKey(e) {
   const t = e.target, typing = t.matches && t.matches('input, textarea, select, [contenteditable="true"]');
   const modalOpen = $$('dialog').some((d) => d.open);
-  if (e.key === 'Escape' && !modalOpen) { if (document.activeElement === $('#q')) { $('#q').value = ''; $('#list').focus(); doSearch(); } return; }
+  if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return;
+  if (e.key === 'Escape' && !modalOpen) { if (document.activeElement === $('#q')) { $('#q').value = ''; $('#list').focus(); doSearch(); } else closeMenu(); return; }
   if (matchKey(e, S.keys.palette)) { e.preventDefault(); if (!$('#palette').open) openPalette(); return; }
   if (typing || modalOpen || e.metaKey || e.ctrlKey || e.altKey) return;
   const seq = S.pendingKey ? S.pendingKey + ' ' + e.key : e.key;

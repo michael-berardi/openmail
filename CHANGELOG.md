@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.1 (2026-11-18)
+
+- Mail shortcuts no longer act on a hidden conversation while Settings, Rules, Accounts, Agents or Drafts is open.
+- Discarding a draft with content, deleting a draft or a rule, and revoking an agent key now ask first.
+- Settings shows "Dark message bodies" and "Compose with formatting" as on when they are on.
+- Apple Mail import no longer fails when the Mac has no rules or VIPs.
+- Attach is reachable from the keyboard. Sidebar counts are announced with the right noun.
+- Phones: the compose buttons wrap instead of running off screen, the closed menu leaves the tab order, Escape closes it, and New message closes it.
+- Switching folders shows "Loading…" instead of the previous folder's messages.
+- Messages inside a dialog appear at the top, clear of Send and Save.
+- Counts read "1 draft", "2 drafts" instead of "draft(s)".
+- Adding an account stops checking for sign-in once the dialog is closed.
+
 ## 0.1.0 (2026-10-19)
 
 - Incremental sync with CONDSTORE, messages over 25 MB downloaded on demand, compressed local storage.

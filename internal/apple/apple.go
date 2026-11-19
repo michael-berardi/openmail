@@ -78,7 +78,7 @@ func accessErr(path string, err error) error {
 // (default: the real one); it must contain Library/Accounts and Library/Mail.
 func Scan(root string) (Found, error) {
 	h := home(root)
-	f := Found{Signatures: map[string]string{}}
+	f := Found{Accounts: []Candidate{}, Rules: []model.Rule{}, Signatures: map[string]string{}, VIPs: []string{}}
 	accts, err := scanAccounts(h)
 	if err != nil {
 		return f, err
@@ -466,7 +466,7 @@ func scanAccounts(home string) ([]Candidate, error) {
 	}
 	// An address can appear twice (account + its mail child); keep the entry that has hosts.
 	seen := map[string]int{}
-	var dedup []Candidate
+	dedup := []Candidate{}
 	for _, c := range out {
 		k := strings.ToLower(c.Email)
 		if i, ok := seen[k]; ok {
@@ -568,7 +568,7 @@ func readPlist(path string, v any) error {
 }
 
 func scanRules(mailData string, warnings []string) ([]model.Rule, []string) {
-	var out []model.Rule
+	out := []model.Rule{}
 	for _, name := range []string{"SyncedRules.plist", "UnsyncedRules.plist"} {
 		var raw any
 		p := filepath.Join(mailData, name)
@@ -777,7 +777,7 @@ func stripHTML(s string) string {
 func scanVIPs(mailData string) []string {
 	var raw any
 	if err := readPlist(filepath.Join(mailData, "VIPSenders.plist"), &raw); err != nil {
-		return nil
+		return []string{}
 	}
 	var out []string
 	var walk func(v any)
@@ -799,7 +799,7 @@ func scanVIPs(mailData string) []string {
 	}
 	walk(raw)
 	sort.Strings(out)
-	var dedup []string
+	dedup := []string{}
 	for i, s := range out {
 		if i == 0 || s != out[i-1] {
 			dedup = append(dedup, s)

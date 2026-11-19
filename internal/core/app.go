@@ -21,7 +21,7 @@ import (
 )
 
 // Version is set at build time.
-var Version = "0.1.0"
+var Version = "0.1.1"
 
 // DataDir returns the directory holding the database. OPENMAIL_HOME overrides it.
 func DataDir() (string, error) {
@@ -68,6 +68,8 @@ var Defaults = map[string]string{
 	"ui.threads":                 "true",
 	"ui.mark_read_seconds":       "1",
 	"ui.preview_lines":           "2",
+	"ui.compose_rich":            "true",
+	"ui.dark_mail":               "true",
 	"ui.reduce_motion":           "system",
 	"ui.keybindings":             "", // JSON object overriding defaults
 	"oauth.google.client_id":     "",
