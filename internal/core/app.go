@@ -75,6 +75,9 @@ var Defaults = map[string]string{
 	"oauth.google.client_id":     "",
 	"oauth.google.client_secret": "",
 	"oauth.microsoft.client_id":  "",
+	"update.check":               "true",  // anonymous daily check, off in CI/agents/non-TTY and by choice
+	"update.auto":                "false", // opt-in: download and install in the background
+	"update.auto_asked":          "false", // never ask the install-auto question twice
 }
 
 // SecretSettings are never shown back in full.
@@ -177,6 +180,9 @@ func (a *App) emit(e Event) {
 	}
 }
 
+// Emit publishes a service event to every subscriber.
+func (a *App) Emit(e Event) { a.emit(e) }
+
 func (a *App) setStatus(acct string, f func(*AccountStatus)) {
 	a.mu.Lock()
 	s := a.status[acct]
@@ -242,7 +248,7 @@ func (a *App) Settings() map[string]string {
 }
 
 func (a *App) SetSetting(actor, k, v string) error {
-	if IsAgent(actor) && (strings.HasPrefix(k, "agent.") || strings.HasPrefix(k, "oauth.") || strings.HasPrefix(k, "send.")) {
+	if IsAgent(actor) && (strings.HasPrefix(k, "agent.") || strings.HasPrefix(k, "oauth.") || strings.HasPrefix(k, "send.") || strings.HasPrefix(k, "update.")) {
 		err := fmt.Errorf("agents cannot change %s (permissions, sign-in and sending settings are the user's); ask the user", k)
 		a.Store.Audit(actor, "setting.set", map[string]string{"key": k}, err)
 		return err

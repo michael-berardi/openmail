@@ -26,6 +26,7 @@ import (
 
 	"github.com/michael-berardi/openmail/internal/core"
 	"github.com/michael-berardi/openmail/internal/model"
+	"github.com/michael-berardi/openmail/internal/update"
 	"github.com/michael-berardi/openmail/internal/web"
 )
 
@@ -65,7 +66,13 @@ func main() {
 	if err != nil {
 		fatal("open database", err)
 	}
-	srv, err := web.New(app, web.Options{Addr: "127.0.0.1:0"})
+	var quit func()
+	srv, err := web.New(app, web.Options{Addr: "127.0.0.1:0", Desktop: true, Relaunch: func() {
+		// The web UI asks only when no message is being written.
+		if bundle, err := update.RunningBundle(); err == nil && update.RelaunchAfterExit(bundle) == nil && quit != nil {
+			quit()
+		}
+	}})
 	if err != nil {
 		fatal("start interface", err)
 	}
@@ -150,7 +157,14 @@ func main() {
 		},
 		OnStartup: func(ctx context.Context) {
 			wctx = ctx
+			quit = func() { wr.Quit(ctx) }
 			go watchUnread(bg, app, show)
+		},
+		OnDomReady: func(ctx context.Context) {
+			// This version started; its update rollback copy is no longer needed.
+			if bundle, err := update.RunningBundle(); err == nil {
+				update.CleanPrevious(bundle, true)
+			}
 		},
 		OnBeforeClose: func(ctx context.Context) bool { saveState(app.Dir, ctx); return false },
 		OnShutdown:    func(ctx context.Context) { saveState(app.Dir, ctx) },
