@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 (2026-11-26)
+
+- One-line CLI installers for macOS/Linux (`install.sh`) and Windows (`install.ps1`): exact asset selection, SHA-256 verification against `SHA256SUMS`, versioned install folders and PATH shims. They refuse to replace files they did not install.
+- On macOS, `install.sh --app` verifies and installs the release's OpenMail.app into `~/Applications`.
+- Release assets now include both installers and their checksums.
+
 ## 0.1.1 (2026-11-18)
 
 - Mail shortcuts no longer act on a hidden conversation while Settings, Rules, Accounts, Agents or Drafts is open.

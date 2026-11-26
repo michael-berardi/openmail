@@ -1,11 +1,16 @@
 #!/bin/bash
 # Build, sign, notarize and checksum every release artifact into dist/release.
-# usage: scripts/release.sh v0.1.0      (macOS with the Developer ID certificate and notary profile)
+# usage: SIGN_ID="Developer ID Application: …" NOTARY_PROFILE=… scripts/release.sh v0.2.0
+# SIGN_ID may also be omitted: the only Developer ID Application identity in the login keychain is used.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VERSION="${1:?usage: release.sh vX.Y.Z}"
-SIGN_ID="${SIGN_ID:-Developer ID Application: Michael Berardi (T63VT9UAY2)}"
-PROFILE="${NOTARY_PROFILE:-ImploseLabs-Notarization}"
+SIGN_ID="${SIGN_ID:-$(security find-identity -v -p codesigning 2>/dev/null | awk -F'"' '/Developer ID Application/ { print $2; exit }')}"
+case "$SIGN_ID" in
+  "Developer ID Application"*) ;;
+  *) { echo "release: set SIGN_ID to a Developer ID Application identity from 'security find-identity -v -p codesigning'" >&2; exit 1; } ;;
+esac
+PROFILE="${NOTARY_PROFILE:?set NOTARY_PROFILE to the notarization keychain profile}"
 OUT=dist/release; rm -rf "$OUT" && mkdir -p "$OUT"
 LDF="-s -w -X github.com/michael-berardi/openmail/internal/core.Version=$VERSION"
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
@@ -34,5 +39,8 @@ done
 d="$T/windows"; mkdir -p "$d"; GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "$LDF" -o "$d/openmail.exe" ./cmd/openmail
 cp LICENSE README.md "$d/"; (cd "$d" && zip -q "$OLDPWD/$OUT/openmail-cli-$VERSION-windows-amd64.zip" openmail.exe LICENSE README.md)
 
+# Ship the installers with the signed assets so one-line installs and SHA-256 verification stay in sync.
+cp scripts/install.sh scripts/install.ps1 "$OUT/"
+chmod 755 "$OUT/install.sh"
 (cd "$OUT" && shasum -a 256 * > SHA256SUMS)
 cat "$OUT/SHA256SUMS"
