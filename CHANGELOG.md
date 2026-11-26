@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.2 (2026-11-26)
+
+- Privacy: remote images and CSS URLs stay blocked by default; no telemetry, analytics or update checks were found or added.
+- The local audit log is capped at 1,000 entries, and the data directory plus SQLite database, WAL and SHM files are created with private permissions.
+- Builds disable Go tool telemetry; README now documents what leaves the machine and how to delete local mail.
+
 ## 0.1.1 (2026-11-18)
 
 - Mail shortcuts no longer act on a hidden conversation while Settings, Rules, Accounts, Agents or Drafts is open.

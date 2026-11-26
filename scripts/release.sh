@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build, sign, notarize and checksum every release artifact into dist/release.
-# usage: scripts/release.sh v0.1.0      (macOS with the Developer ID certificate and notary profile)
+# usage: scripts/release.sh v0.1.2      (macOS with the Developer ID certificate and notary profile)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VERSION="${1:?usage: release.sh vX.Y.Z}"
@@ -11,7 +11,7 @@ LDF="-s -w -X github.com/michael-berardi/openmail/internal/core.Version=$VERSION
 T=$(mktemp -d); trap 'rm -rf "$T"' EXIT
 
 echo "== CLI (macOS universal)"
-for a in arm64 amd64; do GOOS=darwin GOARCH=$a CGO_ENABLED=0 go build -trimpath -ldflags "$LDF" -o "$T/openmail-$a" ./cmd/openmail; done
+for a in arm64 amd64; do GOTELEMETRY=off GOOS=darwin GOARCH=$a CGO_ENABLED=0 go build -trimpath -ldflags "$LDF" -o "$T/openmail-$a" ./cmd/openmail; done
 CLI="$T/openmail-cli-$VERSION"; mkdir -p "$CLI" && lipo -create "$T/openmail-arm64" "$T/openmail-amd64" -output "$CLI/openmail"
 codesign --force --options runtime --timestamp --sign "$SIGN_ID" "$CLI/openmail"
 cp LICENSE README.md "$CLI/"
@@ -28,10 +28,10 @@ ditto -c -k --keepParent dist/OpenMail.app "$OUT/OpenMail-$VERSION-macos-univers
 
 echo "== CLI (Linux, Windows)"
 for t in linux/amd64 linux/arm64; do
-  d="$T/${t/\//-}"; mkdir -p "$d"; GOOS=${t%/*} GOARCH=${t#*/} CGO_ENABLED=0 go build -trimpath -ldflags "$LDF" -o "$d/openmail" ./cmd/openmail
+  d="$T/${t/\//-}"; mkdir -p "$d"; GOTELEMETRY=off GOOS=${t%/*} GOARCH=${t#*/} CGO_ENABLED=0 go build -trimpath -ldflags "$LDF" -o "$d/openmail" ./cmd/openmail
   cp LICENSE README.md "$d/"; tar -C "$d" -czf "$OUT/openmail-cli-$VERSION-${t/\//-}.tar.gz" .
 done
-d="$T/windows"; mkdir -p "$d"; GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "$LDF" -o "$d/openmail.exe" ./cmd/openmail
+d="$T/windows"; mkdir -p "$d"; GOTELEMETRY=off GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -trimpath -ldflags "$LDF" -o "$d/openmail.exe" ./cmd/openmail
 cp LICENSE README.md "$d/"; (cd "$d" && zip -q "$OLDPWD/$OUT/openmail-cli-$VERSION-windows-amd64.zip" openmail.exe LICENSE README.md)
 
 (cd "$OUT" && shasum -a 256 * > SHA256SUMS)

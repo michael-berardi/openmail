@@ -1,12 +1,53 @@
 package store
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/michael-berardi/openmail/internal/model"
 	"github.com/michael-berardi/openmail/internal/query"
 )
+
+func TestPrivateFilesAndBoundedAuditLog(t *testing.T) {
+	dir := t.TempDir()
+	// An existing, loosely permissioned data directory must be tightened too.
+	if err := os.Chmod(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	db := filepath.Join(dir, "openmail.db")
+	s, err := Open(db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	if fi, err := os.Stat(dir); err != nil || fi.Mode().Perm() != 0o700 {
+		t.Fatalf("data dir permissions: %v %v", fi, err)
+	}
+	for _, p := range []string{db, db + "-wal", db + "-shm"} {
+		fi, err := os.Stat(p)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if err != nil || fi.Mode().Perm() != 0o600 {
+			t.Fatalf("%s permissions: %v %v", p, fi, err)
+		}
+	}
+	for i := 0; i < auditRetention+200; i++ {
+		s.Audit("cli", "test", map[string]string{"note": "private"}, nil)
+	}
+	var n int
+	if err := s.DB().QueryRow(`SELECT COUNT(*) FROM audit`).Scan(&n); err != nil {
+		t.Fatal(err)
+	}
+	if n > auditRetention {
+		t.Fatalf("audit log grew to %d rows; cap is %d", n, auditRetention)
+	}
+	entries, err := s.ListAudit(10, "")
+	if err != nil || len(entries) != 10 {
+		t.Fatalf("recent audit entries missing: %d %v", len(entries), err)
+	}
+}
 
 func TestContactSearchPrefersPrefixAndVIP(t *testing.T) {
 	s, err := Open(filepath.Join(t.TempDir(), "t.db"))

@@ -28,6 +28,10 @@ type Store struct {
 
 var ErrNotFound = errors.New("not found")
 
+// auditRetention is the maximum number of audit rows kept on disk. The log records
+// actions and errors (which can include names or paths), so it is bounded.
+const auditRetention = 1000
+
 const schema = `
 CREATE TABLE IF NOT EXISTS accounts(
   id TEXT PRIMARY KEY, name TEXT, email TEXT, display_name TEXT,
@@ -82,9 +86,12 @@ CREATE TABLE IF NOT EXISTS remote_ok(addr TEXT PRIMARY KEY);
 
 // Open opens (creating if needed) the database at path.
 func Open(path string) (*Store, error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return nil, fmt.Errorf("create data dir: %w", err)
 	}
+	// Tighten an existing directory too: it holds mail and token hashes.
+	_ = os.Chmod(dir, 0o700)
 	dsn := "file:" + path + "?_pragma=busy_timeout(10000)&_pragma=journal_mode(WAL)&_pragma=foreign_keys(0)&_pragma=synchronous(NORMAL)"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -99,7 +106,11 @@ func Open(path string) (*Store, error) {
 			return nil, fmt.Errorf("migrate database %s: %w", path, err)
 		}
 	}
-	_ = os.Chmod(path, 0o600)
+	// SQLite creates WAL/SHM/journal sidecars with the process umask; make all of
+	// them private, not just the main database file.
+	for _, p := range []string{path, path + "-wal", path + "-shm", path + "-journal"} {
+		_ = os.Chmod(p, 0o600)
+	}
 	return &Store{db: db}, nil
 }
 
@@ -922,6 +933,8 @@ func (s *Store) Audit(actor, action string, args any, opErr error) {
 		a = a[:4000] + "…"
 	}
 	_, _ = s.db.Exec(`INSERT INTO audit(ts,actor,action,args,ok,error) VALUES(?,?,?,?,?,?)`, time.Now().Unix(), actor, action, a, ok, msg)
+	// Keep only the most recent entries; this log is local and grows with every action.
+	_, _ = s.db.Exec(`DELETE FROM audit WHERE id <= (SELECT COALESCE(MAX(id),0)-? FROM audit)`, auditRetention)
 }
 
 func (s *Store) ListAudit(limit int, actor string) ([]model.AuditEntry, error) {

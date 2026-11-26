@@ -2,12 +2,12 @@
 # Build dist/OpenMail.app (arm64 or the host architecture) from cmd/openmail-desktop.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"
+VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.2)}"
 APP=dist/OpenMail.app
 rm -rf "$APP" && mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 build() { # arch output
-  CGO_ENABLED=1 GOARCH="$1" CC="clang -arch $([ "$1" = amd64 ] && echo x86_64 || echo arm64)" go build -tags production -trimpath \
+  GOTELEMETRY=off CGO_ENABLED=1 GOARCH="$1" CC="clang -arch $([ "$1" = amd64 ] && echo x86_64 || echo arm64)" go build -tags production -trimpath \
     -ldflags "-s -w -X github.com/michael-berardi/openmail/internal/core.Version=$VERSION" \
     -o "$2" ./cmd/openmail-desktop
 }
