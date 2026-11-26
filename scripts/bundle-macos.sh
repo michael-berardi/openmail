@@ -2,7 +2,7 @@
 # Build dist/OpenMail.app (arm64 or the host architecture) from cmd/openmail-desktop.
 set -euo pipefail
 cd "$(dirname "$0")/.."
-VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"
+VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.2.0)}"
 APP=dist/OpenMail.app
 rm -rf "$APP" && mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 

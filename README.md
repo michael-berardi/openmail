@@ -4,9 +4,26 @@ A mail client for people who use both a browser and command-line tools, with sco
 
 ## Install
 
-**macOS app (Apple silicon and Intel):** download the signed, notarized [app zip from the latest release](https://github.com/michael-berardi/openmail/releases/latest), unzip it, and drag OpenMail to Applications.
+**macOS and Linux, one line:**
 
-**Command line:** download and extract your platform's CLI archive from the [latest release](https://github.com/michael-berardi/openmail/releases/latest), then put `openmail` (`openmail.exe` on Windows) on your `PATH`.
+```sh
+curl -fsSL https://github.com/michael-berardi/openmail/releases/latest/download/install.sh | sh
+```
+
+The installer checks `SHA256SUMS`, puts the CLI in `~/.local/share/openmail/<version>` and adds an `openmail` shim in `~/.local/bin` (add that directory to your `PATH`). On macOS, use `sh -s -- --app` instead to also install the verified OpenMail.app in `~/Applications`.
+
+**Windows, one line (PowerShell):**
+
+```powershell
+irm https://github.com/michael-berardi/openmail/releases/latest/download/install.ps1 | iex
+```
+
+The Windows installer verifies the same checksums, installs to `%LOCALAPPDATA%\OpenMail\<version>` and adds `openmail.cmd` to `%USERPROFILE%\.local\bin`. Both installers refuse to replace binaries or shims they did not install. Override `OPENMAIL_VERSION` or `OPENMAIL_RELEASE_BASE` to pin a version or use a mirror.
+
+### Other download options
+
+- **macOS app (Apple silicon and Intel):** download the signed, notarized [app zip from the latest release](https://github.com/michael-berardi/openmail/releases/latest), unzip it, and drag OpenMail to Applications.
+- **Command line:** download and extract your platform's CLI archive from the [latest release](https://github.com/michael-berardi/openmail/releases/latest), then put `openmail` (`openmail.exe` on Windows) on your `PATH`.
 
 CLI binaries are available for macOS (universal), Linux (arm64 or x86-64), and Windows (x86-64). Each release includes `SHA256SUMS`. Linux and Windows use `openmail serve`; there is no desktop app for those platforms.
 

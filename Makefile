@@ -1,4 +1,4 @@
-VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.2.0)
 
 .PHONY: build test install demo clean app install-app
 build:
