@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build, sign, notarize and checksum every release artifact into dist/release.
-# usage: scripts/release.sh v0.1.0      (macOS with the Developer ID certificate and notary profile)
+# usage: scripts/release.sh v0.2.0      (macOS with the Developer ID certificate and notary profile)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 VERSION="${1:?usage: release.sh vX.Y.Z}"

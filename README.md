@@ -69,6 +69,16 @@ The web app defaults to `127.0.0.1:7777`, requires a token or authenticated cook
 
 IMAP and SMTP only: no Exchange EWS/ActiveSync, POP, calendar, contacts app, S/MIME or PGP.
 
+## Updates
+
+OpenMail tells you when a new release is out: the CLI after a command (`openmail update` installs it), the macOS app with an in-app prompt and Settings → Updates. Automatic installation is off until you turn it on. See [Updates](docs/updates.md).
+
+## Privacy
+
+- No telemetry, accounts or cloud service; mail stays on your machine.
+- OpenMail connects only to your mail servers, sign-in and setup lookups, and images you allow.
+- An update check is one anonymous request to GitHub, at most once a day. Details in [Privacy](PRIVACY.md).
+
 ## Development
 
 ```sh

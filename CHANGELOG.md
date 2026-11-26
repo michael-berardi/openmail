@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.0 (2026-11-26)
+
+- OpenMail tells you when a new release is out: after a command in the terminal, and with an in-app prompt in the macOS app. The check is one anonymous request at most once a day and stays silent in CI, agent shells, MCP, `--json` output and pipes.
+- New `openmail update` installs the release after checking it against `SHA256SUMS`, keeps one rollback copy, and uses `brew upgrade` for Homebrew installs. `--check`, `--skip`, `--auto on|off|status` and `--rollback` cover the rest.
+- The macOS app installs updates only after verifying the checksum, code signature, notarization and Developer ID Team ID, and reopens only while no message is being written.
+- Automatic installation is opt-in: Settings → Updates or `openmail update --auto on`. See [Updates](docs/updates.md).
+
 ## 0.1.1 (2026-11-18)
 
 - Mail shortcuts no longer act on a hidden conversation while Settings, Rules, Accounts, Agents or Drafts is open.

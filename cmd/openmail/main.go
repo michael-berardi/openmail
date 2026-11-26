@@ -40,6 +40,8 @@ Setup
   audit                     what the user, rules and agents did
   doctor                    check setup and fix hints
   version
+  update [--check|--skip|--auto on|off|status|--rollback]
+                            install the latest release, or check, skip, roll back
 
 Search syntax: from:alice to:bob subject:"q3 plan" is:unread|flagged|vip has:attachment
                after:7d before:2026-01-31 in:inbox account:me@x.com label:tag  free words
@@ -61,6 +63,7 @@ func main() {
 		"junk": cmdAct("junk"), "flag": cmdAct("flag"), "unflag": cmdAct("unflag"), "move": cmdMove, "snooze": cmdSnooze,
 		"sync": cmdSync, "unsubscribe": cmdUnsub, "rules": cmdRules, "config": cmdConfig, "tokens": cmdTokens,
 		"audit": cmdAudit, "folders": cmdFolders, "doctor": cmdDoctor, "version": cmdVersion,
+		"update": cmdUpdate,
 	}
 	fn, ok := cmds[os.Args[1]]
 	if !ok {
@@ -69,9 +72,14 @@ func main() {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	if err := fn(ctx, os.Args[2:]); err != nil {
+	err := fn(ctx, os.Args[2:])
+	afterCommand(os.Args[1:], err)
+	if err != nil {
 		if errors.Is(err, errUsage) {
 			os.Exit(2)
+		}
+		if errors.Is(err, errUpdateAvailable) {
+			os.Exit(10)
 		}
 		fmt.Fprintf(os.Stderr, "openmail: %v\n", err)
 		os.Exit(1)

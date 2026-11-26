@@ -26,26 +26,31 @@ import (
 	"github.com/michael-berardi/openmail/internal/mcpserver"
 	"github.com/michael-berardi/openmail/internal/model"
 	"github.com/michael-berardi/openmail/internal/store"
+	"github.com/michael-berardi/openmail/internal/update"
 )
 
 //go:embed static
 var staticFS embed.FS
 
 type Options struct {
-	Addr         string   // default 127.0.0.1:7777
-	AllowedHosts []string // extra Host header values (when bound beyond localhost)
-	OpenBrowser  func(url string) error
+	Addr            string   // default 127.0.0.1:7777
+	AllowedHosts    []string // extra Host header values (when bound beyond localhost)
+	OpenBrowser     func(url string) error
+	Desktop         bool         // the macOS app: daily check and in-app install
+	UpdateInstaller appInstaller // default update.AppInstaller
+	Relaunch        func()       // the desktop shell quits and reopens the app
 }
 
 type Server struct {
-	app    *core.App
-	opts   Options
-	webTok string
-	hosts  map[string]bool
-	mcpMu  sync.Mutex
-	mcpSrv map[string]*mcp.Server
-	http   *http.Server
-	ln     net.Listener
+	app       *core.App
+	opts      Options
+	webTok    string
+	hosts     map[string]bool
+	mcpMu     sync.Mutex
+	mcpSrv    map[string]*mcp.Server
+	http      *http.Server
+	ln        net.Listener
+	installer appInstaller
 }
 
 type ctxKey int
@@ -61,7 +66,10 @@ func New(app *core.App, o Options) (*Server, error) {
 	if err != nil {
 		return nil, err
 	}
-	s := &Server{app: app, opts: o, webTok: tok, hosts: map[string]bool{}, mcpSrv: map[string]*mcp.Server{}}
+	s := &Server{app: app, opts: o, webTok: tok, hosts: map[string]bool{}, mcpSrv: map[string]*mcp.Server{}, installer: o.UpdateInstaller}
+	if s.installer == nil {
+		s.installer = update.AppInstaller{}
+	}
 	return s, nil
 }
 
@@ -103,6 +111,9 @@ func (s *Server) Serve(ctx context.Context) error {
 		if err := s.Listen(); err != nil {
 			return err
 		}
+	}
+	if s.opts.Desktop {
+		go s.checkUpdates(ctx)
 	}
 	s.http = &http.Server{Handler: s.routes(), ReadHeaderTimeout: 15 * time.Second}
 	errc := make(chan error, 1)
@@ -247,6 +258,11 @@ func (s *Server) routes() http.Handler {
 		writeJSON(w, s.app.Settings())
 		return nil
 	}))
+	mux.HandleFunc("GET /api/update", s.route("read", s.updateStatus))
+	mux.HandleFunc("POST /api/update/check", s.route("admin", s.updateCheck))
+	mux.HandleFunc("POST /api/update/skip", s.route("admin", s.updateSkip))
+	mux.HandleFunc("POST /api/update/install", s.route("admin", s.updateInstall))
+	mux.HandleFunc("POST /api/update/relaunch", s.route("admin", s.updateRelaunch))
 
 	mux.HandleFunc("POST /api/act", s.route("write", s.act))
 	mux.HandleFunc("POST /api/message/{id}/edit-draft", s.route("write", s.editDraft))

@@ -111,6 +111,87 @@ function toast(msg, opts = {}) {
 }
 const fail = (e) => { console.error(e); toast(e.message || String(e), { error: true }); };
 
+// ---------- updates ----------
+// The desktop app shows a non-modal update prompt; `openmail serve` users update with `openmail update`.
+const U = { st: null, later: '', manual: false, installing: false, waiting: null, lastInput: Date.now() };
+for (const ev of ['keydown', 'pointerdown', 'wheel']) addEventListener(ev, () => { U.lastInput = Date.now(); }, { capture: true, passive: true });
+// Never interrupt work: no message being written, sent or unsaved; automatic installs also wait for a quiet minute.
+const updateIdle = (auto) => !$('#compose').open && !C.dirty && !C.busy && (!auto || Date.now() - U.lastInput > 60000);
+function waitIdle(auto, fn) {
+  clearInterval(U.waiting);
+  U.waiting = setInterval(() => { if (updateIdle(auto)) { clearInterval(U.waiting); U.waiting = null; fn(); } }, 3000);
+}
+async function loadUpdate() {
+  U.st = await api('/api/update');
+  renderUpdateBanner();
+  if (U.st.desktop && U.st.available && U.st.auto && !U.installing && !U.waiting) waitIdle(true, () => installUpdate(true));
+}
+function releaseNotes(text) {
+  const box = h('div', { class: 'update-notes' });
+  let list = null;
+  for (const raw of (text || '').split('\n')) {
+    const line = raw.trim().replace(/`([^`]+)`/g, '$1').replace(/\*\*([^*]+)\*\*/g, '$1');
+    if (!line || line.startsWith('#')) { list = null; continue; }
+    const item = line.match(/^[-*]\s+(.*)/);
+    if (item) { if (!list) box.append(list = h('ul')); list.append(h('li', { text: item[1] })); }
+    else { list = null; box.append(h('p', { text: line })); }
+  }
+  return box.childElementCount ? box : null;
+}
+function renderUpdateBanner() {
+  const el = $('#update-banner'), st = U.st;
+  const show = st && st.desktop && (st.available || (U.manual && st.newer)) && !U.installing && U.later !== st.version;
+  if (!show) { el.hidden = true; return; }
+  const auto = h('input', { type: 'checkbox', checked: st.auto, onchange: async (e) => {
+    try { await putSetting('update.auto', e.target.checked); st.auto = e.target.checked; } catch (er) { e.target.checked = st.auto; fail(er); }
+  } });
+  el.replaceChildren(
+    h('div', { class: 'update-title', text: `OpenMail ${st.version} is available — you have ${st.current}.` }),
+    releaseNotes(st.notes),
+    h('label', { class: 'update-auto' }, auto, 'Automatically download and install updates in the future'),
+    h('div', { class: 'update-actions' },
+      h('button', { class: 'btn', text: 'Skip This Version', onclick: async () => {
+        try { U.st = await api('/api/update/skip', { method: 'POST', body: { version: st.version } }); U.manual = false; renderUpdateBanner(); } catch (er) { fail(er); }
+      } }),
+      h('span', { class: 'grow' }),
+      h('button', { class: 'btn', text: 'Remind Me Later', onclick: () => { U.later = st.version; U.manual = false; renderUpdateBanner(); } }),
+      h('button', { class: 'btn primary', text: 'Install Update', onclick: () => installUpdate(false) })));
+  el.hidden = false;
+}
+async function installUpdate(auto) {
+  if (U.installing) return;
+  U.installing = true; renderUpdateBanner();
+  const note = auto ? null : toast('Downloading and verifying the update…', { ms: 120000 });
+  try {
+    const r = await api('/api/update/install', { method: 'POST', body: {} });
+    note && note.close();
+    toast(`OpenMail ${r.installed} is installed. OpenMail reopens when you are not writing a message.`, { ms: 8000 });
+    waitIdle(auto, () => api('/api/update/relaunch', { method: 'POST', body: {} }).catch(fail));
+  } catch (er) {
+    note && note.close();
+    U.installing = false; renderUpdateBanner();
+    toast((auto ? 'Automatic update failed: ' : 'Update failed: ') + er.message, { error: true });
+  }
+}
+async function checkNow(btn) {
+  btn.disabled = true;
+  try {
+    const st = U.st = await api('/api/update/check', { method: 'POST', body: {} });
+    U.later = ''; U.manual = true;
+    if (st.error) toast('Update check failed: ' + st.error, { error: true });
+    else if (!st.newer) toast(`OpenMail ${st.current} is up to date`);
+    else if (!st.desktop) toast(`OpenMail ${st.version} is available. Run: ${st.package_command || 'openmail update'}`, { ms: 9000 });
+    renderUpdateBanner();
+  } catch (er) { fail(er); }
+  btn.disabled = false;
+}
+function updateVersionRow() {
+  const label = h('span', { class: 'lbl muted', text: 'Version ' + (U.st ? U.st.current : '') });
+  if (!U.st) loadUpdate().then(() => { label.textContent = 'Version ' + U.st.current; }).catch(() => {});
+  return h('div', { class: 'form-row' }, label,
+    h('div', {}, h('button', { class: 'btn', type: 'button', text: 'Check Now', onclick: (e) => checkNow(e.currentTarget) })));
+}
+
 function fmtDate(ts, long) {
   const d = new Date(ts * 1000), now = new Date();
   if (long) return d.toLocaleString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -942,6 +1023,10 @@ async function pageSettings() {
       { k: 'sync.days', label: 'First sync reaches back (days)', type: 'number', hint: '0 = everything' },
       { k: 'sync.poll_seconds', label: 'Full refresh every (seconds)', type: 'number' },
     ]],
+    ['Updates', [
+      { k: 'update.check', label: 'Check for updates automatically', type: 'bool' },
+      { k: 'update.auto', label: 'Install updates automatically', type: 'bool' },
+    ]],
     ['Agents', [
       { k: 'agent.send_policy', label: 'When an agent sends', type: 'select', opts: [['draft_only', 'Never: drafts only'], ['approve', 'Hold for my approval'], ['allow', 'Send with undo window']] },
       { k: 'agent.expose_bodies', label: 'Agents can read message bodies', type: 'bool' },
@@ -955,7 +1040,7 @@ async function pageSettings() {
     ]],
   ];
   const root = h('div', {}, back(), h('h2', { text: 'Settings' }));
-  for (const [sec, items] of schema) root.append(h('h3', { text: sec }), h('div', { class: 'card' }, items.map(control)));
+  for (const [sec, items] of schema) root.append(h('h3', { text: sec }), h('div', { class: 'card' }, items.map(control), sec === 'Updates' ? updateVersionRow() : null));
   // keyboard
   root.append(h('h3', { text: 'Keyboard shortcuts' }));
   const tbl = h('table', { class: 'data' }, h('thead', {}, h('tr', {}, h('th', { text: 'Action' }), h('th', { text: 'Keys' }))));
@@ -1364,6 +1449,7 @@ function connectEvents() {
     else if (e.type === 'sync') onSync();
     else if (e.type === 'account') { refreshOverview(); if (S.page === 'accounts') renderPage(); }
     else if (e.type === 'settings') api('/api/settings').then((s) => { S.settings = s; applySettings(); });
+    else if (e.type === 'update') loadUpdate().catch(() => {});
     else if (e.type === 'outbox') {
       loadDrafts(); refreshOverview();
       if (e.detail === 'sent') { announce('Message sent'); toast('Message sent'); }
@@ -1388,6 +1474,7 @@ async function boot() {
     [S.settings, S.ov] = await Promise.all([api('/api/settings'), api('/api/overview')]);
   } catch (e) { fail(e); return; }
   applySettings(); wireCompose();
+  loadUpdate().catch(() => {});
   if (!/Mac|iPhone|iPad/.test(navigator.platform)) $('#send-kbd').textContent = 'Ctrl↵';
   $('#btn-compose-side').addEventListener('click', () => openCompose({}));
   $('#btn-refresh').addEventListener('click', refresh);
