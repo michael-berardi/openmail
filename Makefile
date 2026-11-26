@@ -2,9 +2,9 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.
 
 .PHONY: build test install demo clean app install-app
 build:
-	GOTELEMETRY=off go build -trimpath -ldflags "-s -w -X github.com/michael-berardi/openmail/internal/core.Version=$(VERSION)" -o bin/openmail ./cmd/openmail
+	go build -trimpath -ldflags "-s -w -X github.com/michael-berardi/openmail/internal/core.Version=$(VERSION)" -o bin/openmail ./cmd/openmail
 test:
-	GOTELEMETRY=off go vet ./... && GOTELEMETRY=off go test -race ./...
+	go vet ./... && go test -race ./...
 	sh scripts/test-install.sh
 install: build
 	mkdir -p "$(HOME)/.local/bin"

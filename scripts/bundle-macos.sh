@@ -7,7 +7,7 @@ APP=dist/OpenMail.app
 rm -rf "$APP" && mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 build() { # arch output
-  GOTELEMETRY=off CGO_ENABLED=1 GOARCH="$1" CC="clang -arch $([ "$1" = amd64 ] && echo x86_64 || echo arm64)" go build -tags production -trimpath \
+  CGO_ENABLED=1 GOARCH="$1" CC="clang -arch $([ "$1" = amd64 ] && echo x86_64 || echo arm64)" go build -tags production -trimpath \
     -ldflags "-s -w -X github.com/michael-berardi/openmail/internal/core.Version=$VERSION" \
     -o "$2" ./cmd/openmail-desktop
 }
