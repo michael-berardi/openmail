@@ -108,6 +108,12 @@ func TestMessageHTMLIsLockedDown(t *testing.T) {
 	if !strings.Contains(csp, "sandbox") {
 		t.Fatalf("csp must sandbox: %s", csp)
 	}
+	body, _ := io.ReadAll(r.Body)
+	for _, bad := range []string{` src="https:`, ` src="http:`, `url(https:`, `url(http:`} {
+		if strings.Contains(string(body), bad) {
+			t.Fatalf("default view would load a remote image: %s", body)
+		}
+	}
 	r2 := do(t, ts, "GET", "/api/message/"+itoa(msgs[0].ID)+"/html?remote=1", s.webTok, nil, "")
 	if !strings.Contains(r2.Header.Get("Content-Security-Policy"), "img-src data: https:") {
 		t.Fatalf("remote=1 should allow images: %s", r2.Header.Get("Content-Security-Policy"))

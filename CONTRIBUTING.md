@@ -12,3 +12,4 @@ make install-app # macOS desktop app into ~/Applications
 - Errors must name their cause; no silent failures.
 - UI text is short and has no filler. Keep the interface keyboard- and screen-reader-operable.
 - Never commit real mail, addresses or credentials; fixtures use `example.com`.
+- The `GOTELEMETRY` go env variable is non-settable, so use `go telemetry` to view the current mode and `go telemetry off` to disable both collection and uploading. In local mode, counter data is written to the local file system but not uploaded; `go telemetry on` writes data locally and periodically sends it to https://telemetry.go.dev/.

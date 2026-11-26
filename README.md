@@ -95,6 +95,20 @@ make build # CLI in bin/openmail
 
 The service layer is in `internal/core`; SQLite in `internal/store`; the API and embedded UI in `internal/web`; MCP in `internal/mcpserver`. See [Contributing](CONTRIBUTING.md), [Security](SECURITY.md) and [Privacy](PRIVACY.md).
 
+## Privacy
+
+OpenMail sends no telemetry, analytics, crash reports or update checks, and nothing goes to the author. Network access happens only for features you set up or invoke:
+
+- **Your mail provider:** IMAP and SMTP to sync, read and send mail. Adding an account also queries DNS and your domain's autoconfig endpoint (which receives the email address), then Mozilla's Thunderbird database (which receives only the domain).
+- **Google or Microsoft**, only if you register your own OAuth client and sign in that way. An MCP client you connect is another third party you configured; its token scope limits what it can read or send.
+- **Remote images in a message**, only if you click "Load images", allow that sender, or set `privacy.remote_content` to `allow`. They are blocked by default, so tracking pixels cannot report that you opened a message. One-click unsubscribe, if you use it, contacts the URL in that message.
+
+The web app and MCP HTTP server listen on `127.0.0.1`. The interface, fonts and icons are embedded in the binary; no CDN or remote font is loaded.
+
+Everything else stays local. The data folder holds the SQLite database (mail, attachments, search index, drafts, rules, contacts, settings, hashed agent tokens and an audit log capped at 1,000 entries) plus a window-size file. The default folder is `~/Library/Application Support/OpenMail` on macOS, `$XDG_DATA_HOME/openmail` (or `~/.local/share/openmail`) on Linux and `%APPDATA%\OpenMail` on Windows; `OPENMAIL_HOME` overrides it. The folder is 0700 and database files are 0600. Passwords and OAuth tokens are in your OS keychain, or in `OPENMAIL_PASSWORD_*` variables you set; an OAuth client secret you configure is stored in the local database.
+
+To delete everything: stop OpenMail, run `openmail accounts remove <address>` for each account (this removes its keychain password and refresh token), then delete the data folder.
+
 ---
 
 Part of [Pareto Cybernetics](https://paretocybernetics.com/): free, private, open-source tools for working with AI agents.

@@ -5,6 +5,14 @@
 - One-line CLI installers for macOS/Linux (`install.sh`) and Windows (`install.ps1`): exact asset selection, SHA-256 verification against `SHA256SUMS`, versioned install folders and PATH shims. They refuse to replace files they did not install.
 - On macOS, `install.sh --app` verifies and installs the release's OpenMail.app into `~/Applications`.
 - Release assets now include both installers and their checksums.
+- OpenMail tells you when a new release is out: after a command in the terminal, and with an in-app prompt in the macOS app. The check is one anonymous request at most once a day and stays silent in CI, agent shells, MCP, `--json` output and pipes.
+- New `openmail update` installs the release after checking it against `SHA256SUMS`, keeps one rollback copy, and uses `brew upgrade` for Homebrew installs. `--check`, `--skip`, `--auto on|off|status` and `--rollback` cover the rest.
+- The macOS app installs updates only after verifying the checksum, code signature, notarization and Developer ID Team ID, and reopens only while no message is being written.
+- Automatic installation is opt-in: Settings → Updates or `openmail update --auto on`. See [Updates](docs/updates.md).
+- Privacy: remote images and CSS URLs stay blocked by default; no telemetry, analytics or accounts were added. With this release OpenMail does make one anonymous daily update check, which you can turn off with `OPENMAIL_NO_UPDATE_CHECK=1` or Settings → Updates.
+- The local audit log is capped at 1,000 entries, and the data directory plus SQLite database, WAL and SHM files are created with private permissions.
+- README now has a short Privacy section, with the full detail in [PRIVACY.md](PRIVACY.md): what leaves the machine, what is stored, and how to delete local mail.
+
 
 ## 0.1.1 (2026-11-18)
 
