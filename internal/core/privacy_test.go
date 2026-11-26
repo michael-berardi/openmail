@@ -95,3 +95,50 @@ func TestDefaultRendersNoRemoteContent(t *testing.T) {
 		}
 	}
 }
+
+// TestReadmePrivacyStaysShort checks the release rule that the README carries only a
+// short Privacy summary: at most six non-empty lines, with the detail in PRIVACY.md.
+func TestReadmePrivacyStaysShort(t *testing.T) {
+	root := filepath.Join("..", "..")
+	readme, err := os.ReadFile(filepath.Join(root, "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	inPrivacy, lines := false, 0
+	for _, ln := range strings.Split(string(readme), "\n") {
+		if strings.HasPrefix(ln, "## ") {
+			inPrivacy = strings.TrimSpace(strings.TrimPrefix(ln, "## ")) == "Privacy"
+			continue
+		}
+		if inPrivacy && strings.TrimSpace(ln) != "" {
+			lines++
+		}
+	}
+	if lines == 0 {
+		t.Fatal("README has no Privacy section")
+	}
+	if lines > 6 {
+		t.Errorf("README Privacy section has %d non-empty lines, want at most 6; move the detail to PRIVACY.md", lines)
+	}
+	// Before the update check existed the README said there was none. It now says what the
+	// anonymous daily check is and how to turn it off.
+	if strings.Contains(strings.ToLower(string(readme)), "no update check") {
+		t.Error("README still claims there is no update check; describe the anonymous daily check and its opt-out")
+	}
+	if !strings.Contains(string(readme), "[Privacy](PRIVACY.md)") {
+		t.Error("README Privacy section must link to PRIVACY.md")
+	}
+	detail, err := os.ReadFile(filepath.Join(root, "PRIVACY.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"**Update checks:**", "openmail-update-check", "OPENMAIL_NO_UPDATE_CHECK",
+		"**No telemetry", "**Storage:**", "audit log capped at 1,000 entries",
+		"0700", "0600", "**Deleting it:**", "**Agents:**",
+	} {
+		if !strings.Contains(string(detail), want) {
+			t.Errorf("PRIVACY.md does not document %q", want)
+		}
+	}
+}
