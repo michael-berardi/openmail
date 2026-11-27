@@ -21,7 +21,7 @@ import (
 )
 
 // Version is set at build time.
-var Version = "0.2.0"
+var Version = "0.2.1"
 
 // DataDir returns the directory holding the database. OPENMAIL_HOME overrides it.
 func DataDir() (string, error) {

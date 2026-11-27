@@ -86,6 +86,11 @@ server.serve_forever()
     test -x "$app_home/Applications/OpenMail.app/Contents/MacOS/OpenMail" || fail "OpenMail.app not installed"
     [ "$(sed -n '1p' "$app_home/.local/share/openmail/.app-installed")" = "$app_home/Applications/OpenMail.app" ] ||
       fail "missing app install marker"
+    # Reinstalling the app replaces it and leaves no backup copy or staging folder behind.
+    run_installer "$app_home" --app
+    test -x "$app_home/Applications/OpenMail.app/Contents/MacOS/OpenMail" || fail "OpenMail.app missing after reinstall"
+    leftovers=$(find "$app_home/Applications" "$app_home/.local" -name '*.openmail-old.*' -o -name '.openmail-old.*' -o -name '.openmail-install.*' -o -name '.openmail-shim.*')
+    [ -z "$leftovers" ] || fail "reinstall left debris: $leftovers"
     foreign_app_home="$release_root/foreign-app"; mkdir -p "$foreign_app_home/Applications/OpenMail.app"
     if HOME="$foreign_app_home" OPENMAIL_VERSION="$version" sh "$PWD/scripts/install.sh" --app > "$release_work/refuse-app.log" 2>&1; then
       fail "installer replaced an app it did not create"

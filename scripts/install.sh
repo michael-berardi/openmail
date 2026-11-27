@@ -218,8 +218,8 @@ if [ "$APP_MODE" -eq 1 ]; then
     die "cannot install the macOS app"
   fi
   printf '%s\n' "$app_dir" > "$app_marker" || die "cannot record the app installation"
-  app_backup=""
-  if [ -n "$backup" ]; then rm -rf "$backup"; backup=""; fi
+  # The new app is in place: drop the previous copy so no backup is left in Applications.
+  if [ -n "$app_backup" ]; then rm -rf "$app_backup"; app_backup=""; fi
   say "OpenMail.app installed: $app_dir"
 fi
 

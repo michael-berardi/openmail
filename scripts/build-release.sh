@@ -1,11 +1,11 @@
 #!/bin/sh
 # Assemble a local release directory for end-to-end installer tests from published assets plus the current installers.
-# Usage: scripts/build-release.sh [version] [out-dir]   (default: 0.2.0, dist/release)
+# Usage: scripts/build-release.sh [version] [out-dir]   (default: 0.2.1, dist/release)
 # This is a test fixture builder, not the signing/notarizing production path: scripts/release.sh makes release assets.
 set -eu
 cd "$(dirname "$0")/.."
 
-VERSION="${1:-${OPENMAIL_TEST_VERSION:-0.2.0}}"
+VERSION="${1:-${OPENMAIL_TEST_VERSION:-0.2.1}}"
 VERSION="${VERSION#v}"
 OUT="${2:-dist/release}"
 BASE="${OPENMAIL_RELEASE_BASE:-https://github.com/michael-berardi/openmail/releases/download/v$VERSION}"

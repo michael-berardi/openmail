@@ -28,6 +28,7 @@ if ($env:PROCESSOR_ARCHITECTURE -and $env:PROCESSOR_ARCHITECTURE -ne 'AMD64') {
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ('openmail-install-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $tmp | Out-Null
 $backup = $null
+$stage = $null
 try {
   $sums = Join-Path $tmp 'SHA256SUMS'
   Invoke-WebRequest "$base/SHA256SUMS" -OutFile $sums -UseBasicParsing
@@ -45,15 +46,15 @@ try {
   $marker = Join-Path $target '.openmail-installed'
   $shim = Join-Path $binDir 'openmail.cmd'
   if ((Test-Path -LiteralPath $target) -and -not (Test-Path -LiteralPath $marker)) {
-    throw "Refusing to replace $target: this installer did not create it."
+    throw "Refusing to replace ${target}: this installer did not create it."
   }
   if (Test-Path -LiteralPath $marker) {
     $owner = ((Get-Content -LiteralPath $marker -TotalCount 1) | Out-String).Trim()
-    if ($owner -ne 'OPENMAIL_INSTALLER_V1') { throw "Refusing to replace $target: invalid install marker." }
+    if ($owner -ne 'OPENMAIL_INSTALLER_V1') { throw "Refusing to replace ${target}: invalid install marker." }
   }
   if (Test-Path -LiteralPath $shim) {
     $isOurs = @(Get-Content -LiteralPath $shim -ErrorAction SilentlyContinue) -contains 'REM openmail-installer-shim'
-    if (-not $isOurs) { throw "Refusing to replace $shim: this installer did not create it." }
+    if (-not $isOurs) { throw "Refusing to replace ${shim}: this installer did not create it." }
   }
 
   Write-Host "Downloading $asset..."
@@ -109,6 +110,7 @@ try {
   Write-Host "OpenMail $version installed: $target\openmail.exe (shim: $shim)"
   if (($env:PATH -split ';') -notcontains $binDir) { Write-Host "Add $binDir to your PATH to use: openmail" }
 } finally {
+  if ($stage) { Remove-Item -LiteralPath $stage -Recurse -Force -ErrorAction SilentlyContinue }
   if ($backup) { Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue }
   Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }

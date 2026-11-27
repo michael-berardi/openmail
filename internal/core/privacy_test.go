@@ -136,6 +136,7 @@ func TestReadmePrivacyStaysShort(t *testing.T) {
 		"**Update checks:**", "openmail-update-check", "OPENMAIL_NO_UPDATE_CHECK",
 		"**No telemetry", "**Storage:**", "audit log capped at 1,000 entries",
 		"0700", "0600", "**Deleting it:**", "**Agents:**",
+		"privacy.remote_content", "127.0.0.1", "OPENMAIL_HOME", "Application Support/OpenMail",
 	} {
 		if !strings.Contains(string(detail), want) {
 			t.Errorf("PRIVACY.md does not document %q", want)

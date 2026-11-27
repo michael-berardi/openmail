@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1 (2026-11-26)
+
+- The Windows installer (`install.ps1`) runs again: three error messages used a form PowerShell cannot parse, which stopped the whole script before it did anything. A failed install also removes its staging folder now.
+- Reinstalling the macOS app with `install.sh --app` replaces it without leaving the previous `OpenMail.app` copy in `~/Applications`.
+- [PRIVACY.md](PRIVACY.md) now also lists the default data folders and how remote images get allowed.
+
 ## 0.2.0 (2026-11-26)
 
 - One-line CLI installers for macOS/Linux (`install.sh`) and Windows (`install.ps1`): exact asset selection, SHA-256 verification against `SHA256SUMS`, versioned install folders and PATH shims. They refuse to replace files they did not install.

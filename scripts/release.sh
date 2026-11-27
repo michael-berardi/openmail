@@ -1,6 +1,6 @@
 #!/bin/bash
 # Build, sign, notarize and checksum every release artifact into dist/release.
-# usage: SIGN_ID="Developer ID Application: …" NOTARY_PROFILE=… scripts/release.sh v0.2.0
+# usage: SIGN_ID="Developer ID Application: …" NOTARY_PROFILE=… scripts/release.sh v0.2.1
 # SIGN_ID may also be omitted: the only Developer ID Application identity in the login keychain is used.
 set -euo pipefail
 cd "$(dirname "$0")/.."
