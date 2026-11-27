@@ -13,7 +13,6 @@
 - The local audit log is capped at 1,000 entries, and the data directory plus SQLite database, WAL and SHM files are created with private permissions.
 - README now has a short Privacy section, with the full detail in [PRIVACY.md](PRIVACY.md): what leaves the machine, what is stored, and how to delete local mail.
 
-
 ## 0.1.1 (2026-11-18)
 
 - Mail shortcuts no longer act on a hidden conversation while Settings, Rules, Accounts, Agents or Drafts is open.

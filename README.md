@@ -107,7 +107,6 @@ make build # CLI in bin/openmail
 
 The service layer is in `internal/core`; SQLite in `internal/store`; the API and embedded UI in `internal/web`; MCP in `internal/mcpserver`. See [Contributing](CONTRIBUTING.md), [Security](SECURITY.md) and [Privacy](PRIVACY.md).
 
-
 ---
 
 Part of [Pareto Cybernetics](https://paretocybernetics.com/): free, private, open-source tools for working with AI agents.
